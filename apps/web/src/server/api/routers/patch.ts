@@ -17,6 +17,8 @@ export const patchRouter = createTRPCRouter({
     .mutation(async ({ input: { userId, baseProvider, message, erc6492 } }) => {
       try {
         const access_token = await getAccessToken();
+        console.log("MAMA access_token", access_token);
+
 
         const signature = await signMessageUsingPatchWallet({
           access_token,
@@ -25,6 +27,9 @@ export const patchRouter = createTRPCRouter({
           erc6492,
           message,
         });
+
+        console.log("MAMA signature", signature);
+
 
         return {
           message,
