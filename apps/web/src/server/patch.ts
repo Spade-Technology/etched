@@ -83,7 +83,12 @@ export const signMessageUsingPatchWallet = async ({
     hash: message.startsWith("0x") ? message : undefined,
   });
 
+  console.log("MAMA: body", body)
+
   const address = await getBaseAccountAddress({ baseProvider, userId, access_token });
+
+  console.log("MAMA: address", address)
+
 
   const result = await fetch(`${env.PATCHWALLET_BASE_URL}/kernel/sign`, {
     method: "POST",
@@ -95,13 +100,21 @@ export const signMessageUsingPatchWallet = async ({
     redirect: "follow",
   });
 
+  console.log("MAMA: result", result)
+
+
   const _signature = await result.json();
+
+  console.log("MAMA: _signature", _signature)
+
 
   const signature = await createERC6492Signature({
     baseProvider,
     userId,
     _signature,
   });
+  console.log("MAMA: signature", signature)
+
 
   const callResponse = await publicClient.call({
     data: concat([
@@ -113,6 +126,7 @@ export const signMessageUsingPatchWallet = async ({
       ]),
     ]),
   });
+  console.log("MAMA: callResponse", callResponse)
 
   const isValidSignature = callResponse.data === "0x01";
 
