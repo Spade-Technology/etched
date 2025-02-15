@@ -19,6 +19,7 @@ import Link from "next/link";
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   isSignup?: boolean;
   factorTwo?: boolean;
+  SignInOrUpComponent: () => React.JSX.Element
 }
 
 export default function AuthenticationPage({ isSignup }: { isSignup: boolean }) {
@@ -56,9 +57,8 @@ export default function AuthenticationPage({ isSignup }: { isSignup: boolean }) 
         </div>
       </aside>
       <div
-        className={`mx-auto flex w-4/6 flex-col items-center justify-center gap-4 py-10 transition-opacity delay-500 duration-1000 ease-in-out ${
-          showLogin ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
-        }`}
+        className={`mx-auto flex w-4/6 flex-col items-center justify-center gap-4 py-10 transition-opacity delay-500 duration-1000 ease-in-out ${showLogin ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
+          }`}
       >
         <div className="w-full sm:w-[25rem]">
           {!(sessionId || !factorTwo) && (
@@ -86,7 +86,7 @@ export default function AuthenticationPage({ isSignup }: { isSignup: boolean }) 
               </Button>
             </div>
           ) : (
-            <UserAuthForm isSignup={isSignup} factorTwo={factorTwo} />
+            <UserAuthForm isSignup={isSignup} factorTwo={factorTwo} SignInOrUpComponent={() => isSignup ? <SignUp path="/auth/signup" signInUrl="/auth" /> : <SignIn path="/auth" afterSignInUrl="/auth" afterSignUpUrl="/auth/signup" signUpUrl="/auth/signup" />} />
           )}
           {!(sessionId || factorTwo) && (
             <div className="mx-auto mt-10 flex w-full items-center justify-center">
@@ -109,7 +109,7 @@ export default function AuthenticationPage({ isSignup }: { isSignup: boolean }) 
   );
 }
 
-export function UserAuthForm({ className, isSignup, factorTwo, ...props }: UserAuthFormProps) {
+export function UserAuthForm({ className, isSignup, factorTwo, SignInOrUpComponent, ...props }: UserAuthFormProps) {
   const router = useRouter();
 
   const { isLoaded, userId, sessionId, isSignedIn } = useAuth();
@@ -122,7 +122,7 @@ export function UserAuthForm({ className, isSignup, factorTwo, ...props }: UserA
   React.useEffect(() => {
     if (sessionId && userId && isLoaded && isSignedIn) {
       logIn({
-        isPatchWallet: true,
+        isPkp: true,
         callback: setMessageState,
       });
     }
@@ -157,11 +157,8 @@ export function UserAuthForm({ className, isSignup, factorTwo, ...props }: UserA
           </span>
         </div>
       ) : // if signUp=1, then it will be a sign up form
-      isSignup ? (
-        <SignUp path="/auth/signup" redirectUrl="/auth" afterSignUpUrl="/auth" signInUrl="/auth" routing="virtual" />
-      ) : (
-        <SignIn path="/auth" afterSignInUrl="/auth" afterSignUpUrl="/auth/signup" signUpUrl="/auth/signup" routing="virtual" />
-      )}
+        <SignInOrUpComponent />
+      }
       {!sessionId && !isSignup && !factorTwo && (
         <>
           <div className="flex items-center justify-center">

@@ -1,6 +1,7 @@
+import AuthenticationPage from "@/components/user-auth-form";
 import { Metadata } from "next";
 
-import AuthenticationPage from "@/components/user-auth-form";
+
 
 export const metadata: Metadata = {
   title: "Authentication",

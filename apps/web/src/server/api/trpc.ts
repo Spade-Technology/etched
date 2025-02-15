@@ -7,9 +7,9 @@
  * need to use are documented accordingly near the end.
  */
 
+import { clerk_client } from "@/clerkClient";
 import { getServerAuthSession } from "@/server/auth";
 import { prisma } from "@/server/db";
-import { clerkClient } from "@clerk/nextjs";
 import { initTRPC, TRPCError } from "@trpc/server";
 import { type CreateNextContextOptions } from "@trpc/server/adapters/next";
 import { type Session } from "next-auth";
@@ -112,14 +112,16 @@ const enforceUserIsAuthed = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
-  const clerkUser = (
-    await clerkClient.users.getUserList({ externalId: [ctx.session.address?.toLocaleLowerCase() as string] })
-  )[0];
+
+  const clerkUsers =
+    await clerk_client.users.getUserList({ externalId: [ctx.session.address?.toLocaleLowerCase() as string] })
+
+
 
   return next({
     ctx: {
       // infers the `session` as non-nullable
-      session: { ...ctx.session, user: ctx.session.user, clerkUser: clerkUser },
+      session: { ...ctx.session, user: ctx.session.user, clerkUser: clerkUsers.data[0] },
     },
   });
 });

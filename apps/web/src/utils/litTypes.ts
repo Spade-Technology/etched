@@ -135,3 +135,9 @@ export interface decryptToIpfsProps {
   ipfsCid: string;
 }
 export type SymmetricKey = Uint8Array | string | CryptoKey | BufferSource;
+
+export interface Pkp {
+  tokenId: string;
+  publicKey: string;
+  ethAddress: string;
+}

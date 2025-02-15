@@ -1,18 +1,14 @@
 import { camelCaseNetwork, contracts } from "@/contracts";
-import { lit } from "@/lit";
+import { lit } from "@/LitServerSide";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { deductCreditsFromUser, userHasSufficientCredits } from "@/server/etched-credit-management";
-import { encryptToIpfs, fakeEncryptToIpfs } from "@/server/lit-encrypt";
-import { generateServerAuthSig, generateServerSessionSig, publicClient, walletClient } from "@/server/web3";
+import { publicClient, walletClient } from "@/server/web3";
 import { defaultAccessControlConditions, defaultAccessControlConditionsUsingReadableID } from "@/utils/accessControlConditions";
 import { EVMAddressType, teamPermissions } from "@/utils/common";
 import { getTagsOfEtchAndOwner } from "@/utils/hooks/useGetTagsOfEtchAndOwner";
-import { urqlConfig } from "@/utils/urql";
 import EtchABI from "@abis/Etches.json";
-import * as LitJsSdk from "@lit-protocol/lit-node-client";
 // import * as LitJsSdk from "@lit-protocol/lit-node-client-nodejs";
 import { TRPCError } from "@trpc/server";
-import { Client, gql } from "urql";
 import { Address, decodeEventLog, encodeFunctionData, encodePacked, keccak256 } from "viem";
 import { z } from "zod";
 const random = require("random-bigint");
@@ -44,7 +40,6 @@ export const etchRouter = createTRPCRouter({
         },
       }) => {
         // uint256(keccak256(_msgSender())) + (random uint 48)
-        //NOTE: THIS IS THE FAKE VERSION . . .WE ONLY CONNECT TO LIT BEFORE THE REAL VERSINO BELOW.
 
         let ipfsCids: string[] = [];
         let etchUIDs: string[] = [];
@@ -55,7 +50,7 @@ export const etchRouter = createTRPCRouter({
           throw new Error("User lacks sufficient credits to continue!")
         }
 
-
+        await lit.connect()
         await Promise.all(
           files.map(async ({ url, name, type }) => {
             const etchUID = BigInt(keccak256(encodePacked(["address"], [address as Address]))) + random(48);
@@ -63,20 +58,18 @@ export const etchRouter = createTRPCRouter({
 
             const file = await fetch(url).then((res) => res.blob());
 
-            //FIXME: Return to `encryptToIpfs` once LIT gets their act together
-            const ipfsCid = await fakeEncryptToIpfs({
-              authSig: {} as any,
+            const ipfsCid = await lit.encryptToIpfs({
+              authSig,
               sessionSigs: {} as any,
               file,
               chain: camelCaseNetwork,
               evmContractConditions: defaultAccessControlConditions({ etchUID: etchUID.toString() }),
-              //FIXME: Remove `originalFileUrl` once LIT gets their act together
-              metadata: { type, originalFileUrl: url, etchUID: etchUID.toString() },
+              metadata: { type, etchUID: etchUID.toString() },
             }).catch((err) => {
-              console.log(err);
-              console.log(err.stack);
-              throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to upload to IPFS (fakeEncryption)" });
+              console.error(err);
+              throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to upload to IPFS" });
             });
+
 
             ipfsCids.push(ipfsCid);
 
@@ -92,45 +85,6 @@ export const etchRouter = createTRPCRouter({
             callDatas.push(calldata);
           })
         );
-
-        // await lit.connect();
-        // await Promise.all(
-        //   files.map(async ({ url, name, type }) => {
-        //     console.log(`bulkMintEtch 4.insidePromise`)
-        //     const etchUID = BigInt(keccak256(encodePacked(["address"], [address as Address]))) + random(48);
-        //     etchUIDs.push(etchUID);
-        //     console.log(`bulkMintEtch 5.insidePromise`)
-        //     const file = await fetch(url).then((res) => res.blob());
-        //     console.log(`bulkMintEtch 6.insidePromise`)
-        //     const ipfsCid = await encryptToIpfs({
-        //       authSig: await generateServerAuthSig(),
-        //       file,
-        //       chain: camelCaseNetwork,
-        //       evmContractConditions: defaultAccessControlConditions({ etchUID: etchUID.toString() }),
-        //       // metadata: { type },
-        //       //FIXME: Remove `originalFileUrl` once LIT gets their act together
-        //       metadata: { type, originalFileUrl: url, etchUID: etchUID.toString() },
-        //     }).catch((err) => {
-        //       console.log(err);
-        //       console.log(err.stack);
-        //       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to upload to IPFS" });
-        //     });
-        //     console.log(`bulkMintEtch 7.insidePromise`)
-        //     ipfsCids.push(ipfsCid);
-
-        //     const functionName = team ? "safeMintForTeam" : "safeMint";
-        //     const args = team ? [etchUID, team, name, ipfsCid] : [etchUID, address, name, ipfsCid];
-        //     console.log(`bulkMintEtch 8.insidePromise`)
-        //     const calldata = encodeFunctionData({
-        //       abi: EtchABI,
-        //       functionName: functionName,
-        //       args: args,
-        //     });
-        //     console.log(`bulkMintEtch 9.insidePromise`)
-        //     callDatas.push(calldata);
-        //   })
-        // );
-        console.log(`bulkMintEtch 10`)
 
         const tx1 = await walletClient.writeContract({
           address: contracts.Etch,
@@ -166,7 +120,6 @@ export const etchRouter = createTRPCRouter({
           //NOTE: Finally deduct from credits . . .  Admins get pass
           if (!isAdmin) {
             const tmpRemainingCredits = await deductCreditsFromUser(address as EVMAddressType)
-            console.log('REMAINING CREDITS: ', tmpRemainingCredits)
           }
           return { tx: tx1, id: etchId };
         } catch (e) {
@@ -184,7 +137,7 @@ export const etchRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input: { str, etchId, authSig } }) => {
-      const ipfsCid = await encryptToIpfs({
+      const ipfsCid = await lit.encryptToIpfs({
         authSig: authSig,
         chain: camelCaseNetwork,
         string: str,
@@ -255,13 +208,6 @@ export const etchRouter = createTRPCRouter({
                 toDelete: false,
                 toCreate: true
               }));
-
-            console.log('EXISTING TAGS:', existingTags);
-            console.log('NEW TAGS:', tags);
-            console.log('ACTIONABLE:', {
-              toDelete: tagsToDelete,
-              toCreate: tagsToCreate
-            });
 
             const actionableTags = [...tagsToDelete, ...tagsToCreate];
 

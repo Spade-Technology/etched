@@ -1,18 +1,16 @@
-import { lit } from "@/lit";
+import { lit } from "@/LitServerSide";
 import { walletWithCapacityCredit } from "@/litContracts";
 import { adminProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
 import { prisma } from "@/server/db";
 import { regenerateCapacityCredits } from "@/server/user-operations";
 import { getClerkUserListWithCredits, userCreditsRemaining, updateUserCredits, UsersListInputSchema, type PaginatedResponseSchemaResult } from "@/server/etched-credit-management";
 
-import { clerkClient } from "@clerk/nextjs";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import util from 'util'
 import { EVMAddressType } from "@/utils/common";
+import { clerk_client } from "@/clerkClient";
 
-const zodEvmAddress = z.string().regex(/^(0x)[A-Fa-f0-9]{38}$/i);
 const passwordValidation = z
   .string()
   .refine(
@@ -28,7 +26,7 @@ const passwordValidation = z
     }
   );
 
-async function retrieveStoredCode (code: string) {
+async function retrieveStoredCode(code: string) {
   const userCode = await prisma.userActivationCode.findFirstOrThrow({
     where: { code, userAddress: null },
   });
@@ -39,14 +37,14 @@ async function retrieveStoredCode (code: string) {
   };
 }
 
-async function invalidateStoredCode (code: string, userAddress: string) {
+async function invalidateStoredCode(code: string, userAddress: string) {
   await prisma.userActivationCode.updateMany({
     where: { code },
     data: { userAddress },
   });
 }
 
-async function createStoredCode () {
+async function createStoredCode() {
   const generateRandomPart = () =>
     String.fromCharCode(
       ...Array(5)
@@ -65,6 +63,7 @@ async function createStoredCode () {
 
   return { code, expiration };
 }
+
 
 export const userRouter = createTRPCRouter({
   subscribeToNewsletter: publicProcedure
@@ -96,7 +95,7 @@ export const userRouter = createTRPCRouter({
   getClerkUser: publicProcedure
     .input(z.object({ externalId: z.string().array() }))
     .mutation(async ({ input: { externalId } }) => {
-      const user = await clerkClient.users.getUserList({ externalId });
+      const user = await clerk_client.users.getUserList({ externalId });
 
       return user;
     }),
@@ -131,7 +130,7 @@ export const userRouter = createTRPCRouter({
       }
 
       const fileBlob = await fetch(file).then((r) => r.blob());
-      const user = await clerkClient.users.updateUserProfileImage(session?.clerkUser.id, { file: fileBlob });
+      const user = await clerk_client.users.updateUserProfileImage(session?.clerkUser.id, { file: fileBlob });
 
       return user;
     }),
@@ -152,7 +151,7 @@ export const userRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST" });
       }
 
-      const user = await clerkClient.users.updateUser(session?.clerkUser.id, { password });
+      const user = await clerk_client.users.updateUser(session?.clerkUser.id, { password });
 
       return user;
     }),
@@ -169,7 +168,7 @@ export const userRouter = createTRPCRouter({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       }
 
-      const user = await clerkClient.users.updateUser(session?.clerkUser.id, { firstName });
+      const user = await clerk_client.users.updateUser(session?.clerkUser.id, { firstName });
 
       return user;
     }),
@@ -186,7 +185,7 @@ export const userRouter = createTRPCRouter({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       }
 
-      const user = await clerkClient.users.updateUser(session?.clerkUser.id, { lastName });
+      const user = await clerk_client.users.updateUser(session?.clerkUser.id, { lastName });
 
       return user;
     }),

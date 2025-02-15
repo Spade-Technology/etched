@@ -1,10 +1,9 @@
 //WARNING:  Keep in mind the context here is `CLERK` users with an "overlay" of Prisma `User` based on matching address.
 
 import { prisma } from "@/server/db";
-import { clerkClient } from "@clerk/nextjs";
 import { z } from "zod";
-import util from 'util';
 import { EVMAddressType } from "@/utils/common";
+import { clerk_client } from "@/clerkClient";
 
 export const UsersListInputSchema = z.object({
   limit: z.number().min(1).max(500).default(50),
@@ -53,19 +52,18 @@ export const getClerkUserListWithCredits = async (params: UsersListInputSchemaPa
 
   // Get users with count
   const [users, total] = await Promise.all([
-    clerkClient.users.getUserList(queryParams),
-    clerkClient.users.getCount(queryParams),
+    clerk_client.users.getUserList(queryParams),
+    clerk_client.users.getCount(queryParams),
   ]);
 
   //Append local credit-related values
-  const enrichedUsers = await enrichUsersWithCredits(users);
+  const enrichedUsers = await enrichUsersWithCredits(users.data);
 
   //Complete navigation
   const hasMore = offset + limit < total;
   const previous = offset > 0 ? Math.max(0, offset - limit) : null;
   const next = hasMore ? offset + limit : null;
 
-  // console.log(util.inspect(enrichedUsers, { showHidden: false, depth: null, colors: true }))
   return {
     users: enrichedUsers,
     pagination: {
@@ -103,9 +101,6 @@ const processUserBatch = async (
   const creditMap = new Map(
     creditData.map(user => [user.email, user.etchedCreditsRemaining])
   );
-
-  // console.log('USERIDS:', userIds)
-  // console.log('CREDIT MAP:', creditMap)
 
   return users.map(user => ({
     ...user,
@@ -193,14 +188,13 @@ export const userHasSufficientCredits = async (address: EVMAddressType, required
       where: { address: address },
     });
     if (user?.isAdministrator == true) {
-      console.log('Roll out the red carpet for the admin!!!')
+      console.log('Roll out the red carpet for the admin!!!') // I was removing console.logs but this made laugh so hard that i changed my mind 
       return true
     }
   }
 
   //otherwise keep going
   const availableCredits = await userCreditsRemaining(address);
-  console.log(`ADDRESS: ${address} < - > CREDITS: ${availableCredits}`)
   return availableCredits >= requiredCredits;
 }
 

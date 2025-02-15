@@ -1,8 +1,7 @@
 import { Etch } from "@/gql/graphql";
 import Image from "next/image";
-import { ComponentType, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AddUser from "./components/add-user";
-import Comments from "./components/comments";
 import Edit from "./components/edit";
 
 import { VideoPlayer } from "@/components/VideoPlayer";
@@ -10,8 +9,7 @@ import { PDFViewer } from "@/components/pdf-viewer";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import EtchesABI from "@/contracts/abi/Etches.json";
-import { lit } from "@/lit";
-import { useSignIn } from "@/utils/hooks/useSignIn";
+import { lit } from "@/LitClientSide";
 import { model_formats } from "@/utils/model-formats";
 import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
 import filetype from "magic-bytes.js";
@@ -26,15 +24,13 @@ import { useAuth } from "@clerk/nextjs";
 import { api } from "@/utils/api";
 
 const EtchSection = ({ etch, isLoading }: { etch: Etch; isLoading: boolean }) => {
-  const { userId: _userId } = useAuth();
+  const { userId: _userId, getToken } = useAuth();
   const userId = _userId?.toLowerCase();
-  const { mutateAsync: getUserFromId } = api.patch.getUser.useMutation();
 
   const [openAddUser, setOpenAddUser] = useState(false);
   const [etchFile, setEtchFile] = useState("");
   const [fileType, setFileType] = useState("");
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const { regenerateAuthSig, generateSessionSig } = useSignIn();
 
   const owner = useLoggedInAddress();
 
@@ -44,30 +40,29 @@ const EtchSection = ({ etch, isLoading }: { etch: Etch; isLoading: boolean }) =>
     functionName: "hasWritePermission",
     args: [owner, etch?.tokenId],
   });
+  const { mutateAsync: getSessionSigs } = api.lit.getSessionSigs.useMutation();
+  const { mutateAsync: getPkp } = api.lit.getPkp.useMutation();
+
 
   const decrypt = async () => {
     try {
-      // await lit.connect();
-      // if (!etch?.ipfsCid) return;
-      // const authSig = await regenerateAuthSig();
-      // const sessionSigs = await generateSessionSig();
-      // const sessionSigs = await regenerateSessionSig();
-      // const decrypted = await lit.decryptFromIpfs({ sessionSigs, authSig, ipfsCid: etch.ipfsCid }).catch((e) => alert(e.message));
-      //FIXME: (START) Undo once LIT gets their junk together
-      const patchUserInfo = await getUserFromId({
-        userId: userId!,
-        baseProvider: process.env.NEXT_PUBLIC_PATCHWALLET_KERNEL_NAME,
-      });
-      console.log("********************* fake decryption (patchUserInfo) *********************");
-      console.log(patchUserInfo);
-      console.log({
-        fromUserId: userId!,
-        baseProvider: process.env.NEXT_PUBLIC_PATCHWALLET_KERNEL_NAME,
-      });
-      const decrypted = await lit
-        .fakeDecryptFromIpfs({ eoa: patchUserInfo?.eoa, ipfsCid: etch.ipfsCid })
-        .catch((e) => alert(e.message));
-      //FIXME: (END) Undo once LIT gets their junk together
+      await lit.connect();
+      const token = await getToken()
+      if (!etch?.ipfsCid || !userId || !token) return;
+
+      const user = await getPkp({ userId })
+      if (!user) return;
+
+
+      const sessionSigs = await getSessionSigs({
+        token,
+        userId,
+        pkp: user?.pkp
+      })
+
+      const decrypted = await lit.decryptFromIpfs({ sessionSigs, ipfsCid: etch.ipfsCid }).catch((e) => alert(e.message));
+
+
       if (!decrypted?.data) return;
       const metadata = decrypted.metadata;
       const detectedFileType =
@@ -81,29 +76,7 @@ const EtchSection = ({ etch, isLoading }: { etch: Etch; isLoading: boolean }) =>
     }
   };
 
-  // const decrypt = async () => {
-  //   try {
-  //     await lit.connect();
-  //     if (!etch?.ipfsCid) return;
 
-  //     const authSig = await regenerateAuthSig();
-  //     const sessionSigs = await generateSessionSig();
-  //     const decrypted = await lit.decryptFromIpfs({ sessionSigs, authSig, ipfsCid: etch.ipfsCid }).catch((e) => alert(e.message));
-
-  //     if (!decrypted?.data) return;
-
-  //     const metadata = decrypted.metadata;
-  //     const detectedFileType =
-  //       metadata?.type || (typeof decrypted.data === "string" ? "string" : filetype(decrypted.data)[0]?.mime);
-  //     const image = typeof decrypted.data === "string" ? "" : URL.createObjectURL(new Blob([decrypted.data]));
-
-  //     setEtchFile(image);
-  //     setFileType(detectedFileType || "");
-  //   } catch (e: any) {
-  //     console.error(e);
-  //     alert(e.errorKind === "Validation" ? "You are not authorized to view this document" : e.message || "Something went wrong");
-  //   }
-  // };
 
   useEffect(() => {
     if (etch?.ipfsCid) decrypt();

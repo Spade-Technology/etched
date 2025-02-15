@@ -2,7 +2,7 @@ import { TextArea } from "@/components/ui/autoresize-textarea";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Etch, EtchCommentAdded } from "@/gql/graphql";
-import { lit } from "@/lit";
+import { lit } from "@/LitClientSide";
 import { api } from "@/utils/api";
 import { shortenAddress } from "@/utils/hooks/address";
 import { useCommentEtch } from "@/utils/hooks/useCommentBackendOperation";

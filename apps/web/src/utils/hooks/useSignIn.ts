@@ -1,11 +1,5 @@
 import { currentNetworkId, currentNode } from "@/contracts";
-import {
-  createSiweMessageWithRecaps,
-  createSiweMessage,
-  LitAbility,
-  LitAccessControlConditionResource,
-} from "@lit-protocol/auth-helpers";
-import { lit } from "@/lit";
+
 
 import { useAuth } from "@clerk/nextjs";
 import { getWalletClient } from "@wagmi/core";
@@ -14,14 +8,17 @@ import { useEffect, useState } from "react";
 import { SiweMessage } from "siwe";
 import nacl from "tweetnacl";
 import naclUtil from "tweetnacl-util";
-import { Address, encodeAbiParameters, keccak256, parseAbiParameters } from "viem";
+import { Address, encodeAbiParameters, keccak256, parseAbiParameters, toBytes, toHex } from "viem";
 import { useAccount, useBlockNumber, useSignMessage } from "wagmi";
 
 import { toast } from "@/components/ui/use-toast";
-import { env } from "@/env.mjs";
-import { hashMessageForLit } from "@/lit";
+
 import { api } from "../api";
 import { useRouter } from "next/router";
+import { Pkp } from "../litTypes";
+import { ethers } from "ethers";
+
+
 
 export function useSignOut() {
   const { signOut: clerkSignOut, sessionId } = useAuth();
@@ -48,34 +45,32 @@ export const useSignIn = () => {
   const { signOut } = useSignOut();
 
   const { signMessageAsync } = useSignMessage();
-  const { mutateAsync: generatePatchSignature } = api.patch.signMessageForPatchWallet.useMutation();
+  const { mutateAsync: signMessage } = api.lit.signMessage.useMutation();
+  const { mutateAsync: signRawMessage } = api.lit.signRawMessage.useMutation();
   const { userId: _userId } = useAuth();
   const userId = _userId?.toLowerCase();
-  const { mutateAsync: getUserFromId } = api.patch.getUser.useMutation();
+  const { mutateAsync: getPkp } = api.lit.getPkp.useMutation();
+  const { mutateAsync: createPkp } = api.lit.createPkp.useMutation();
   const { data: nextAuthSession } = useSession();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
   const router = useRouter();
 
-  const { mutateAsync: requestSingleUseCapacityDelegationAuthSig } =
-    api.user.requestSingleUseCapacityDelegationAuthSig.useMutation();
+
 
   useEffect(() => {
     if (nextAuthSession && nextAuthSession.isApproved === "Pending" && isSignedIn && !router.asPath.includes("auth"))
       router.push("/auth/waitlist");
   }, [nextAuthSession, isSignedIn]);
 
-  const logIn = async ({ isPatchWallet = false, callback }: { isPatchWallet?: boolean; callback?: (status: string) => void }) => {
+  const logIn = async ({ isPkp = false, callback }: { isPkp?: boolean; callback?: (status: string) => void }) => {
     try {
       if (!blockNumber) return;
 
       setIsLoading(true);
-      // Generate the message to be signed
 
       callback?.("Preparing your Folders");
 
-      const authSig = await regenerateAuthSig(undefined, { isPatchWallet, patchUserId: userId || undefined });
-
-      // example
+      const authSig = await regenerateAuthSig(undefined, { isPkp, userId });
 
       const blockchainMessage = await encodeAbiParameters(parseAbiParameters("uint256 blockNumber, address nodeAddress"), [
         10000000000n,
@@ -85,17 +80,28 @@ export const useSignIn = () => {
       callback?.("Tidying your workspace");
 
       const walletClient = await getWalletClient({ chainId: Number(currentNetworkId!) });
+
       let blockchainSignature;
-      if (isPatchWallet) {
+      if (isPkp) {
+        const token = await getToken()
+
+        if (!token) throw new Error("No token provided");
         if (!userId) throw new Error("No user ID provided");
-        const _blockchainSignature = await generatePatchSignature({
-          message: keccak256(blockchainMessage),
+        const _blockchainSignature = await signRawMessage({
+          message: ethers.utils.keccak256(
+            ethers.utils.solidityPack(
+              ["string", "bytes32"],
+              ["\x19Ethereum Signed Message:\n32", keccak256(blockchainMessage)]
+            )
+          ),
           userId: userId,
-          erc6492: true,
+          token,
+          pkp: authSig.pkp
         });
 
         blockchainSignature = _blockchainSignature.signature;
       } else blockchainSignature = await walletClient!.signMessage({ message: { raw: keccak256(blockchainMessage) } });
+      // TODO: Test if it works with metamask
 
       callback?.("Making sure everything is in order");
 
@@ -105,6 +111,7 @@ export const useSignIn = () => {
         signature: authSig.sig,
         userId: _userId,
         derivedVia: authSig.derivedVia,
+        pkpAddress: authSig.pkp.ethAddress,
         blockchainMessage,
         blockchainSignature,
         redirect: false,
@@ -133,24 +140,37 @@ export const useSignIn = () => {
     _expiration?: string,
     {
       addressOverride,
-
-      isPatchWallet,
-      patchUserId,
+      isPkp,
+      userId,
     }: {
       addressOverride?: string;
-
-      isPatchWallet?: boolean;
-      patchUserId?: string;
+      isPkp?: boolean;
+      userId?: string;
     } = {}
   ) => {
     try {
-      if (isPatchWallet && !addressOverride)
-        addressOverride = (
-          await getUserFromId({
-            userId: patchUserId!,
-            baseProvider: env.NEXT_PUBLIC_PATCHWALLET_KERNEL_NAME,
+      let pkp: Pkp | undefined
+      if (isPkp && !addressOverride) {
+        let user: {
+          eoa: string;
+          id: string;
+          pkp: {
+            tokenId: string;
+            clerkId?: string;
+            publicKey: string;
+            ethAddress: string;
+          };
+        } | undefined = await getPkp({
+          userId: userId!,
+        })
+        if (!user) {
+          user = await createPkp({
+            userId: userId!
           })
-        ).eoa;
+        }
+        addressOverride = user.eoa;
+        pkp = user.pkp
+      }
 
       const expiration_time = 60 * 60 * 24 * 7; // 7 days
       const expiration_date = new Date(Date.now() + expiration_time * 1000);
@@ -158,7 +178,6 @@ export const useSignIn = () => {
 
       const signature = JSON.parse(localStorage.getItem("lit-auth-signature")!);
 
-      // Example signature message: "localhost:3000 wants you to sign in with your Ethereum account:\n0x1cd4C1A65183472B4dA8023D40Bcf5e3D9171d49\n\n\nURI: http://localhost:3000/\nVersion: 1\nChain ID: 11155111\nNonce: TY8n8U10su60qKwyi\nIssued At: 2023-09-05T10:12:38.759Z\nExpiration Time: 2023-09-06T10:12:38.759Z"
 
       const expirationDateString = signature?.signedMessage
         .split("\n")
@@ -186,26 +205,32 @@ export const useSignIn = () => {
 
       let signedResult: string | undefined;
 
-      if (isPatchWallet) {
-        if (!patchUserId) throw new Error("No user ID provided");
-        const patchSignatureResult = await generatePatchSignature({
-          userId: patchUserId,
-          message: hashMessageForLit(body),
-          erc6492: false,
+
+      if (isPkp) {
+        const token = await getToken()
+
+        if (!userId) throw new Error("No user ID provided");
+        if (!token) throw new Error("No token provided");
+        const litSignatureResult = await signMessage({
+          userId: userId,
+          message: body,
+          pkp: pkp!,
+          token
         });
-        signedResult = patchSignatureResult.signature;
-        console.log("Patch signature result:", signedResult);
-        console.log("-----------------------------------");
+        signedResult = litSignatureResult.signature;
       } else signedResult = await signMessageAsync({ message: body });
 
       if (!signedResult) throw new Error("Unable to sign message");
 
       let authSig = {
         sig: signedResult,
-        derivedVia: isPatchWallet ? "EIP1271" : "web3.eth.personal.sign",
+        derivedVia: "web3.eth.personal.sign",
         signedMessage: body,
         address: (addressOverride ?? address)?.toLowerCase(),
+        pkp
       };
+
+
 
       if (authSig) localStorage.setItem("lit-auth-signature", JSON.stringify(authSig));
 
@@ -226,82 +251,7 @@ export const useSignIn = () => {
     }
   };
 
-  //DETAIL (MICHAEL): Generate a Session Signature
-  async function generateSessionSig() {
-    try {
-      const singleUseCapacityAuthSig = await requestSingleUseCapacityDelegationAuthSig({});
-
-      // Define the authNeededCallback function
-      const authNeededCallback = async (params: any) => {
-        const patchUserInfo = await getUserFromId({
-          userId: userId!,
-          baseProvider: process.env.NEXT_PUBLIC_PATCHWALLET_KERNEL_NAME,
-        });
-
-        if (!params.uri) {
-          throw new Error("uri is required");
-        }
-        if (!params.expiration) {
-          throw new Error("expiration is required");
-        }
-
-        if (!params.resourceAbilityRequests) {
-          throw new Error("resourceAbilityRequests is required");
-        }
-
-        // Create the SIWE message
-        const toSign = await createSiweMessageWithRecaps({
-          uri: params.uri,
-          expiration: params.expiration,
-          resources: params.resourceAbilityRequests,
-          walletAddress: patchUserInfo!.eoa!,
-          nonce: await lit!.client!.getLatestBlockhash(),
-          litNodeClient: lit!.client,
-        });
-
-        const patchSignatureResult = await generatePatchSignature({
-          userId: userId || "",
-          message: hashMessageForLit(toSign),
-          erc6492: false,
-        });
-        // Generate the authSig
-        let authSig = {
-          sig: patchSignatureResult.signature,
-          derivedVia: "EIP1271",
-          signedMessage: toSign,
-          address: patchUserInfo.eoa?.toLowerCase(),
-        };
-
-        return authSig;
-      };
-
-      const litResource = new LitAccessControlConditionResource("*");
-      // Get the session signatures
-      const sessionSigs = await lit!.client!.getSessionSigs({
-        chain: currentNetworkId.toString(),
-        // nonce: await lit!.client!.getLatestBlockhash(),
-        resourceAbilityRequests: [
-          {
-            resource: litResource,
-            ability: LitAbility.AccessControlConditionDecryption,
-          },
-          {
-            resource: litResource,
-            ability: LitAbility.AccessControlConditionSigning,
-          },
-        ],
-        authNeededCallback,
-        capacityDelegationAuthSig: singleUseCapacityAuthSig as any,
-      });
-      // console.log("************ SESSIONSIG (pre-return) ************");
-      // console.dir(sessionSigs);
-      return sessionSigs;
-    } catch (error) {
-      console.error("error regenerateSessionSig: ", error);
-      throw error;
-    }
-  }
-  return { isLoading, logIn, regenerateAuthSig, generateSessionSig };
+  return { isLoading, logIn, regenerateAuthSig };
 };
 
 export const useLoggedInAddress = () => {

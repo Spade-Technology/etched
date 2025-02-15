@@ -67,9 +67,8 @@ const Edit = ({ setOpenAddUser, etch, isLoading, hasWritePermission }: EditProps
 
   return (
     <div
-      className={` ${
-        edit ? "bg-[#F3F5F5] text-[#6D6D6D] dark:bg-background dark:shadow-sm" : " bg-[#097B45] text-[#FBFBFB]"
-      } sticky top-20 w-[414px] basis-1/3 rounded-2xl transition-colors`}
+      className={` ${edit ? "bg-[#F3F5F5] text-[#6D6D6D] dark:bg-background dark:shadow-sm" : " bg-[#097B45] text-[#FBFBFB]"
+        } sticky top-20 w-[414px] basis-1/3 rounded-2xl transition-colors`}
     >
       <TransferOwnershipDialog
         openDialog={openTransferOwnerShipDialog}
@@ -139,9 +138,8 @@ const Edit = ({ setOpenAddUser, etch, isLoading, hasWritePermission }: EditProps
             <Button
               onClick={() => setOpenTransferOwnerShipDialog(true)}
               variant="default"
-              className={`${
-                edit ? "border-[#097B45] bg-transparent text-[#097B45]" : "border-[#A1FFD3] text-[#A1FFD3]"
-              } gap-2 rounded-full  border-[1px] px-3 text-base`}
+              className={`${edit ? "border-[#097B45] bg-transparent text-[#097B45]" : "border-[#A1FFD3] text-[#A1FFD3]"
+                } gap-2 rounded-full  border-[1px] px-3 text-base`}
               disabled={
                 !(
                   etch?.ownership?.owner?.id === owner ||
@@ -330,9 +328,8 @@ const TransferOwnershipDialog: React.FC<transferOwnershipProps> = ({ etchId, ope
                       ></div>
                     </div>
                     <div
-                      className={`text-sm font-medium capitalize text-muted-foreground ${
-                        owner == item ? "!text-foreground" : "text-muted-foreground"
-                      }`}
+                      className={`text-sm font-medium capitalize text-muted-foreground ${owner == item ? "!text-foreground" : "text-muted-foreground"
+                        }`}
                     >
                       {item}
                     </div>

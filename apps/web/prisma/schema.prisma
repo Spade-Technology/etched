@@ -16,6 +16,7 @@ datasource db {
 }
 
 model User {
+    clerkId String  @unique
     address String  @id @unique
     email   String?
 
@@ -26,6 +27,18 @@ model User {
 
     capacityCredits        capacityCredit[]
     etchedCreditsRemaining Int?             @default(0)
+
+    pkp Pkp? @relation(fields: [pkpId], references: [ethAddress])
+
+    pkpId String? @unique
+}
+
+model Pkp {
+    tokenId    String
+    publicKey  String
+    ethAddress String @id @unique
+    clerkId    String @unique
+    User       User?
 }
 
 model Subscriber {
