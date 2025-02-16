@@ -4,7 +4,7 @@ const _litActionCode = async () => {
     const ETCHED_AUTH_METHOD_TYPE = ethers.utils.keccak256(
         ethers.utils.toUtf8Bytes("Etched clerk auth method")
     );
-    const URL = "http://104.197.211.139:3000/api/action"
+    const URL = "https://etched-env-tmp-new-auth-new-me-etchedit.vercel.app/api/action"
     try {
         // Verify the token and user
         const verifyResponse = await fetch(URL, {
