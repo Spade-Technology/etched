@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 const _litActionCode = async () => {
     const ETCHED_AUTH_METHOD_TYPE = ethers.utils.keccak256(
         ethers.utils.toUtf8Bytes("Etched clerk auth method")

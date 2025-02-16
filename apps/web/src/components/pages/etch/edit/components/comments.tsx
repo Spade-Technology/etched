@@ -137,7 +137,7 @@ const Comments = ({ etch, hasWritePermission }: { etch: Partial<Etch>; hasWriteP
     const fetchProfilePics = async () => {
       const uniqueWalletIds = Array.from(new Set(etch.comments?.map((comment) => comment.owner.id)));
       const users = await getClerkUsers({ externalId: uniqueWalletIds });
-      const picsMap = users.reduce((acc, user) => {
+      const picsMap = users.data.reduce((acc, user) => {
         acc[user.externalId as string] = user.imageUrl;
         return acc;
       }, {} as Record<string, string | undefined>);
