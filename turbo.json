@@ -1,31 +1,31 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [
-    "**/.env.*local"
-  ],
-  "globalDotEnv": [
+    "**/.env.*local",
     ".env"
   ],
-  "pipeline": {
+  "tasks": {
     "build": {
       "dependsOn": [
         "^build"
       ],
       "outputs": [
+        "dist/**",
         ".next/**",
         "!.next/cache/**"
       ]
     },
-    "lint": {},
-    "graphql:gqty": {},
-    "compile": {},
-    "db:push": {},
+    "test": {
+      "outputs": [
+        "coverage/**"
+      ],
+      "dependsOn": [
+        "build"
+      ]
+    },
     "dev": {
       "cache": false,
-      "persistent": true,
-      "dependsOn": [
-        "^build"
-      ]
+      "persistent": true
     }
   }
 }
