@@ -141,3 +141,8 @@ export interface Pkp {
   publicKey: string;
   ethAddress: string;
 }
+
+export interface AddUserResponse {
+  success: boolean;
+  error?: string;
+}

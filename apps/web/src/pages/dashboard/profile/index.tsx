@@ -2,7 +2,6 @@
 import { PageBoilerplate } from "@/components/page-boilerplate";
 import { BackUpCodes, Email, Password, Paymaster, Profile, TwoStep } from "@/components/pages/profile";
 import GenerateAccessKey from "@/components/pages/profile/admin/generateAccessKey";
-import RegenerateCapacityCredits from "@/components/pages/profile/admin/mintCapacityCreditsNFT";
 import { AdjustEtchedCredits } from "@/components/pages/profile/admin/adjustEtchedCredits";
 import { Phone } from "@/components/pages/profile/personal/phone/phone";
 import { SelectTheme } from "@/components/pages/profile/personal/select-theme";
@@ -18,7 +17,7 @@ export default function Community() {
   const tabs = [
     { tab: "Personal", contents: [<Profile />, <Email />, <Phone />, <SelectTheme />] },
     { tab: "Security", contents: [<Paymaster />, <Password />, <TwoStep />, <BackUpCodes />] },
-    { tab: "Admin Panel", contents: [<GenerateAccessKey />, <RegenerateCapacityCredits />, <AdjustEtchedCredits />] },
+    { tab: "Admin Panel", contents: [<GenerateAccessKey />, <AdjustEtchedCredits />] },
     { tab: "Billing", contents: [] },
   ];
 

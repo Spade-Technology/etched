@@ -143,12 +143,47 @@ export const litRouter = createTRPCRouter({
       const pkp = await lit.mintPkp(userId)
       if (!pkp) throw new TRPCError({ code: "BAD_REQUEST", message: "Unable To Mint PKP!!" })
 
+      await lit.addUsersAsPayees([pkp.ethAddress])
+
       await prisma.pkp.create({ data: { ...pkp, clerkId: userId } })
+
 
       return {
         eoa: pkp.ethAddress,
         id: userId,
         pkp
       };
+    }),
+
+  decryptFromIpfs: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        token: z.string(),
+        ipfsCid: z.string()
+      })
+    )
+    .mutation(async ({ input: { userId, token, ipfsCid }, ctx: { prisma } }) => {
+      try {
+        await lit.connect()
+
+        const pkp = await prisma.pkp.findUnique({
+          where: {
+            clerkId: userId
+          }
+        })
+        if (!pkp) throw new TRPCError({ code: "BAD_REQUEST", message: "Unable To GET pkp!!" })
+
+        const sessionSigs = await lit.getPkpSessionSigs(userId, token, pkp)
+        if (!sessionSigs) throw new TRPCError({ code: "BAD_REQUEST", message: "Unable To GET sessionsSigs!!" })
+
+        const data = await lit.decryptFromIpfs({ sessionSigs, ipfsCid })
+
+
+        return data
+      } catch (error) {
+        console.log(error)
+        throw error
+      }
     }),
 });

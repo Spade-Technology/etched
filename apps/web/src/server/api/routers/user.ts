@@ -1,8 +1,5 @@
-import { lit } from "@/LitServerSide";
-import { walletWithCapacityCredit } from "@/litContracts";
 import { adminProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
 import { prisma } from "@/server/db";
-import { regenerateCapacityCredits } from "@/server/user-operations";
 import { getClerkUserListWithCredits, userCreditsRemaining, updateUserCredits, UsersListInputSchema, type PaginatedResponseSchemaResult } from "@/server/etched-credit-management";
 
 import { TRPCError } from "@trpc/server";
@@ -219,66 +216,6 @@ export const userRouter = createTRPCRouter({
 
       return { success: true, message: "Activation code verified successfully." };
     }),
-
-  requestCapacityDelegationAuthSig: protectedProcedure.input(z.object({})).mutation(async ({ input: { }, ctx: { session } }) => {
-    const user = await prisma.user.findUnique({ where: { address: session.address! } });
-
-    if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    if (user.isApproved !== "Approved") throw new TRPCError({ code: "FORBIDDEN", message: "User is not approved." });
-
-    let capacityCreditId: string;
-    const capacityCredit = await prisma.capacityCredit.findFirst({
-      where: { expiration: { gte: new Date() } },
-    });
-
-    if (!capacityCredit) capacityCreditId = (await regenerateCapacityCredits()).capacityTokenIdStr;
-    else capacityCreditId = capacityCredit.capacityTokenId;
-
-    await lit.connect();
-
-    const response = await lit.client?.createCapacityDelegationAuthSig({
-      capacityTokenId: capacityCreditId,
-      dAppOwnerWallet: walletWithCapacityCredit,
-      delegateeAddresses: [user.address],
-      uses: "100",
-    });
-
-    return response;
-  }),
-
-  requestSingleUseCapacityDelegationAuthSig: protectedProcedure
-    .input(z.object({}))
-    .mutation(async ({ input: { }, ctx: { session } }) => {
-      const user = await prisma.user.findUnique({ where: { address: session.address! } });
-
-      if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      if (user.isApproved !== "Approved") throw new TRPCError({ code: "FORBIDDEN", message: "User is not approved." });
-
-      let capacityCreditId: string;
-      const capacityCredit = await prisma.capacityCredit.findFirst({
-        where: { expiration: { gte: new Date() } },
-      });
-
-      if (!capacityCredit) capacityCreditId = (await regenerateCapacityCredits(user.address)).capacityTokenIdStr;
-      else capacityCreditId = capacityCredit.capacityTokenId;
-
-      await lit.connect();
-
-      const response = await lit.client?.createCapacityDelegationAuthSig({
-        capacityTokenId: capacityCreditId,
-        dAppOwnerWallet: walletWithCapacityCredit,
-        delegateeAddresses: [user.address],
-        uses: "1",
-      });
-
-      // console.log("**************** createCapacityDelegationAuthSig (response)**************** ");
-      // console.dir(response);
-      return response?.capacityDelegationAuthSig;
-    }),
-
-  regenerateCapacityCredits: adminProcedure.mutation(async ({ ctx: { session } }) => {
-    return await regenerateCapacityCredits();
-  }),
 
   createActivationCode: adminProcedure.mutation(async ({ ctx: { session } }) => {
     const { code, expiration } = await createStoredCode();

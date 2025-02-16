@@ -1,8 +1,6 @@
 import * as LitJsSdk from "@lit-protocol/lit-node-client";
 import { keccak256, toBytes, toHex } from "viem";
-import { decryptToIpfsProps, Pkp } from "./utils/litTypes";
-import { blobToUint8Array } from "./lib/utils";
-import { getEtchContract } from "./utils/contracts.etched";
+import { AddUserResponse, decryptToIpfsProps, Pkp } from "./utils/litTypes";
 import { decryptToFile, decryptToString, encryptFile, encryptString } from '@lit-protocol/encryption';
 
 import { LitContracts } from "@lit-protocol/contracts-sdk";
@@ -22,29 +20,22 @@ import {
 import { LitPKPResource } from "@lit-protocol/auth-helpers";
 import { SiweMessage } from "siwe";
 import { pinata } from "./ipfs";
+import { env } from "./env.mjs";
 
 
 
 type ParameterType = Omit<Parameters<typeof encryptFile>[0], "file">;
 
 
-export const litNetwork = process.env.NODE_ENV === "development" ? "datil-dev" : "datil";
+export const litNetwork = env.NODE_ENV === "development" ? "datil-dev" : "datil";
 
 const client = new LitJsSdk.LitNodeClient({
-  // litNetwork: "serrano",
-  // litNetwork: "jalapeno",
   litNetwork: litNetwork,
-  // litNetwork: "localhost",
-  // only on client
-  alertWhenUnauthorized: typeof window !== "undefined" ? true : false,
-
-  // Verbosity of the logging
   debug: false,
-
-  checkNodeAttestation: process.env.NODE_ENV !== "development",
+  checkNodeAttestation: env.NODE_ENV !== "development",
 });
 
-const ipfsPlublicClientUrl = process.env.NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY + "ipfs/" || "https://gateway.pinata.cloud/ipfs/";
+const ipfsPlublicClientUrl = env.NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY + "ipfs/" || "https://gateway.pinata.cloud/ipfs/";
 
 
 
@@ -57,7 +48,7 @@ class LitServerSide {
 
   constructor() {
     this.ethersSigner = new Wallet(
-      process.env.LIT_PRIVATE_KEY!,
+      env.LIT_PRIVATE_KEY!,
       new providers.JsonRpcProvider("https://yellowstone-rpc.litprotocol.com/")
     );
     this.connect()
@@ -96,35 +87,6 @@ class LitServerSide {
     return this.connectingLock;
   }
 
-
-  async decryptFromIpfs(props: decryptToIpfsProps) {
-    try {
-      const client = await this.connect();
-      const ipfsData = await (await fetch(`${ipfsPlublicClientUrl}${props.ipfsCid}`)).json();
-
-      const data = {
-        // authSig: props.authSig,
-        sessionSigs: props.sessionSigs,
-        chain: ipfsData.chain,
-        ciphertext: ipfsData.ciphertext,
-        dataToEncryptHash: ipfsData.encryptedString || ipfsData.encryptedFile,
-        evmContractConditions: ipfsData.evmContractConditions,
-        solRpcConditions: ipfsData.solRpcConditions,
-        unifiedAccessControlConditions: ipfsData.unifiedAccessControlConditions,
-        accessControlConditions: ipfsData.accessControlConditions,
-      };
-
-      let decrypted;
-
-      if (ipfsData.encryptedString) decrypted = await decryptToString(data, client);
-      else if (ipfsData.encryptedFile) decrypted = await decryptToFile(data, client);
-      return { data: decrypted, metadata: ipfsData.metadata };
-    } catch (error) {
-      console.error("decryptFromIpfs (error):");
-      console.dir(error);
-      throw error;
-    }
-  }
 
   async getMetadataFromIpfs(ipfsCid: string) {
     const ipfsData = await (await fetch(`${ipfsPlublicClientUrl}${ipfsCid}`)).json();
@@ -174,41 +136,8 @@ class LitServerSide {
     if (!this.client || !this.ethersSigner) return
     try {
 
-      if (litNetwork === "datil-dev") {
-        const sessionSignatures = await this.client.getPkpSessionSigs({
-          pkpPublicKey: mintedPkp.publicKey,
-          litActionCode: Buffer.from(litActionCode).toString("base64"),
-          jsParams: {
-            userId,
-            token,
-            pkpTokenId: mintedPkp.tokenId,
-          },
-          resourceAbilityRequests: [
-            {
-              resource: new LitPKPResource("*"),
-              ability: LIT_ABILITY.PKPSigning,
-            },
-
-          ],
-          expiration: new Date(Date.now() + 1000 * 60 * 10).toISOString(), // 10 minutes
-          chain: "ethereum"
-        });
-        return sessionSignatures;
-      }
-      const capacityTokenId = await this.getCapacityCredit();
-
-      const { capacityDelegationAuthSig } =
-        await this.client.createCapacityDelegationAuthSig({
-          dAppOwnerWallet: this.ethersSigner,
-          capacityTokenId,
-          delegateeAddresses: [mintedPkp.ethAddress],
-          uses: "1",
-        });
-
-
       const sessionSignatures = await this.client.getPkpSessionSigs({
         pkpPublicKey: mintedPkp.publicKey,
-        capabilityAuthSigs: [capacityDelegationAuthSig],
         litActionCode: Buffer.from(litActionCode).toString("base64"),
         jsParams: {
           userId,
@@ -326,6 +255,35 @@ class LitServerSide {
     return res.IpfsHash;
   };
 
+  async decryptFromIpfs(props: decryptToIpfsProps) {
+    if (!this.client) throw new Error("Lit not connected!!")
+    try {
+
+      const ipfsData = await (await fetch(`${ipfsPlublicClientUrl}${props.ipfsCid}`)).json();
+
+      const data = {
+        sessionSigs: props.sessionSigs,
+        chain: ipfsData.chain,
+        ciphertext: ipfsData.ciphertext,
+        dataToEncryptHash: ipfsData.encryptedString || ipfsData.encryptedFile,
+        evmContractConditions: ipfsData.evmContractConditions,
+        solRpcConditions: ipfsData.solRpcConditions,
+        unifiedAccessControlConditions: ipfsData.unifiedAccessControlConditions,
+        accessControlConditions: ipfsData.accessControlConditions,
+      };
+
+      let decrypted;
+
+      if (ipfsData.encryptedString) decrypted = await decryptToString(data, this.client);
+      else if (ipfsData.encryptedFile) decrypted = await decryptToFile(data, this.client);
+      return { data: decrypted, metadata: ipfsData.metadata };
+    } catch (error) {
+      console.log("decryptFromIpfs (error):");
+      console.dir(error);
+      throw error;
+    }
+  }
+
 
   // ------------------ UTILS ------------------ i hate oop
 
@@ -390,6 +348,38 @@ class LitServerSide {
       return capacityTokenId;
     } catch (error) {
       console.error(error);
+    }
+  };
+
+
+  async addUsersAsPayees(users: string[]) {
+    if (litNetwork !== "datil") return
+    const headers = {
+      "api-key": env.LIT_RELAYER_API_KEY,
+      "payer-secret-key": env.LIT_PAYER_SECRET_KEY,
+      "Content-Type": "application/json",
+    };
+
+    try {
+      const response = await fetch("https://datil-relayer.getlit.dev/add-users", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify(users),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error: ${await response.text()}`);
+      }
+
+      const data = (await response.json()) as AddUserResponse;
+      if (data.success !== true) {
+        throw new Error(`Error: ${data.error}`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error registering payer:", error);
+      throw error;
     }
   };
 

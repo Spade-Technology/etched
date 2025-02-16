@@ -86,7 +86,7 @@ export default function AuthenticationPage({ isSignup }: { isSignup: boolean }) 
               </Button>
             </div>
           ) : (
-            <UserAuthForm isSignup={isSignup} factorTwo={factorTwo} SignInOrUpComponent={() => isSignup ? <SignUp path="/auth/signup" signInUrl="/auth" /> : <SignIn path="/auth" afterSignInUrl="/auth" afterSignUpUrl="/auth/signup" signUpUrl="/auth/signup" />} />
+            <UserAuthForm isSignup={isSignup} factorTwo={factorTwo} SignInOrUpComponent={() => isSignup ? <SignUp path="/auth/signup" signInUrl="/auth" /> : <SignIn path="/auth" signUpUrl="/auth/signup" />} />
           )}
           {!(sessionId || factorTwo) && (
             <div className="mx-auto mt-10 flex w-full items-center justify-center">

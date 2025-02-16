@@ -4,10 +4,6 @@ import { type GetServerSidePropsContext } from "next";
 import { getServerSession, type DefaultSession, type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { SiweMessage } from "siwe";
-
-import { litNetwork } from "@/LitServerSide";
-import { clerkClient } from "@clerk/nextjs/server";
-import { regenerateCapacityCredits } from "./user-operations";
 import { clerk_client } from "@/clerkClient";
 
 /**
@@ -74,12 +70,6 @@ export async function verifySiweMessage(
   return null;
 }
 
-// this is quite dirty, unfortunately Lit doesn't support sessions with account abstraction and their IEP1271 implementation is not yet ready.
-async function temporaryMintNFTAllocation(address: string) {
-  if (litNetwork === "datil-dev") return;
-
-  await regenerateCapacityCredits(address);
-}
 
 export function getAuthOptions(req: IncomingMessage): NextAuthOptions {
   const providers = [
@@ -121,15 +111,6 @@ export function getAuthOptions(req: IncomingMessage): NextAuthOptions {
           if (!user) {
             user = await prisma.user.create({ data: { address: siwe.address, email: clerkUser?.primaryEmailAddressId, clerkId: credentials.userId, pkpId: credentials.pkpAddress } });
           }
-
-          const capacityCredit = await prisma.capacityCredit.findFirst({
-            where: {
-              receiver: { address: siwe.address },
-              expiration: { gt: new Date(Date.now() + 60 * 60 * 24 * 1000) },
-            },
-          });
-
-          if (!capacityCredit) await temporaryMintNFTAllocation(siwe.address);
 
           // Return the user info
           return { id: siwe.address, isApproved: user.isApproved, isAdmin: user.isAdministrator };

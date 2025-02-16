@@ -33,34 +33,27 @@ export const env = createEnv({
     UPLOADTHING_APP_ID: z.string().min(1),
 
     // RPC URLs
-    // Add `.min(1) on ID and SECRET if you want to make sure they're not empty
-    NEXT_PUBLIC_INFURA_RPC: z.string(),
-    NEXT_PUBLIC_INFURA_ID: z.string(),
     INFURA_API_SECRET: z.string(),
     INFURA_KEY: z.string(),
 
-    // Etched Configuration
-    NEXT_PUBLIC_DEPLOYMENT_BLOCK: z.string(),
-    NEXT_PUBLIC_NETWORK: z.string(),
-    NEXT_PUBLIC_NETWORK_ID: z.number(),
 
     // Etched Node
     ETCHED_NODE_PRIVATE_KEY: z.string(),
-    NEXT_PUBLIC_ETCHED_NODE_ADDRESS: z.string(),
 
     // Etched Configuration
-    NEXT_PUBLIC_THEGRAPH_URL: z.string().url(),
 
     // Clerk
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
     CLERK_SECRET_KEY: z.string(),
 
 
     // Lit
     DOMAIN: z.string(),
+    LIT_PRIVATE_KEY: z.string(),
+    LIT_PAYER_SECRET_KEY: z.string(),
+    LIT_RELAYER_API_KEY: z.string(),
 
 
-    NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY: z.string().url(),
+    // IPFS
     PINATA_API_KEY: z.string().min(1),
     PINATA_API_SECRET: z.string().min(1),
     PINATA_API_JWT: z.string().min(1),
@@ -72,7 +65,24 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string().min(1),
+    // RPC URLs
+    NEXT_PUBLIC_INFURA_ID: z.string(),
+    NEXT_PUBLIC_INFURA_RPC: z.string(),
+
+    // Etched Configuration
+    NEXT_PUBLIC_NETWORK: z.string(),
+    NEXT_PUBLIC_NETWORK_ID: z.number(),
+    NEXT_PUBLIC_DEPLOYMENT_BLOCK: z.string(),
+    NEXT_PUBLIC_ETCHED_NODE_ADDRESS: z.string(),
+
+    // TheGraph
+    NEXT_PUBLIC_THEGRAPH_URL: z.string().url(),
+
+    // Clerk
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
+
+    // IPFS
+    NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY: z.string().url(),
   },
 
   /**
@@ -125,6 +135,9 @@ export const env = createEnv({
 
     // Lit
     DOMAIN: process.env.DOMAIN,
+    LIT_PAYER_SECRET_KEY: process.env.LIT_PAYER_SECRET_KEY,
+    LIT_RELAYER_API_KEY: process.env.LIT_RELAYER_API_KEY,
+    LIT_PRIVATE_KEY: process.env.LIT_PRIVATE_KEY,
 
     // IPFS
     NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY: process.env.NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY,

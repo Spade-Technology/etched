@@ -9,7 +9,6 @@ import { PDFViewer } from "@/components/pdf-viewer";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import EtchesABI from "@/contracts/abi/Etches.json";
-import { lit } from "@/LitClientSide";
 import { model_formats } from "@/utils/model-formats";
 import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
 import filetype from "magic-bytes.js";
@@ -40,27 +39,17 @@ const EtchSection = ({ etch, isLoading }: { etch: Etch; isLoading: boolean }) =>
     functionName: "hasWritePermission",
     args: [owner, etch?.tokenId],
   });
-  const { mutateAsync: getSessionSigs } = api.lit.getSessionSigs.useMutation();
-  const { mutateAsync: getPkp } = api.lit.getPkp.useMutation();
+
+  const { mutateAsync: decryptFromIpfs } = api.lit.decryptFromIpfs.useMutation();
 
 
   const decrypt = async () => {
     try {
-      await lit.connect();
       const token = await getToken()
       if (!etch?.ipfsCid || !userId || !token) return;
 
-      const user = await getPkp({ userId })
-      if (!user) return;
 
-
-      const sessionSigs = await getSessionSigs({
-        token,
-        userId,
-        pkp: user?.pkp
-      })
-
-      const decrypted = await lit.decryptFromIpfs({ sessionSigs, ipfsCid: etch.ipfsCid }).catch((e) => alert(e.message));
+      const decrypted = await decryptFromIpfs({ token, userId, ipfsCid: etch.ipfsCid }).catch((e) => alert(e.message));
 
 
       if (!decrypted?.data) return;
