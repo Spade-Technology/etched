@@ -10,7 +10,7 @@ import { useAccount, useConnect } from "wagmi";
 import { Button } from "./ui/button";
 import { Icons } from "./ui/icons";
 
-interface ConnectWallet extends React.HTMLAttributes<HTMLDivElement> {}
+interface ConnectWallet extends React.HTMLAttributes<HTMLDivElement> { }
 
 const connectorLogo: Record<string, string> = {
   metamask: "/icons/metamask.svg",
@@ -27,7 +27,7 @@ export function ConnectWalletModalButtonWrapper({ className, ...props }: Connect
 
   return isConnected && address ? (
     <>
-      <Button type="button" onClick={() => logIn({ isPatchWallet: false })} isLoading={isLoading}>
+      <Button type="button" onClick={() => logIn({ isPkp: false })} isLoading={isLoading}>
         Sign in using {shortenAddress({ address })}
       </Button>
       <Accordion type="single" collapsible>

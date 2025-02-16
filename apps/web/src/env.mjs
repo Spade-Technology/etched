@@ -55,15 +55,10 @@ export const env = createEnv({
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
     CLERK_SECRET_KEY: z.string(),
 
-    // PatchWallet
-    PATCHWALLET_CLIENT_ID: z.string(),
-    PATCHWALLET_CLIENT_SECRET: z.string(),
-    PATCHWALLET_BASE_URL: z.string(),
 
     // Lit
     DOMAIN: z.string(),
 
-    NEXT_PUBLIC_PATCHWALLET_KERNEL_NAME: z.string(),
 
     NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY: z.string().url(),
     PINATA_API_KEY: z.string().min(1),
@@ -126,12 +121,7 @@ export const env = createEnv({
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
 
-    // PatchWallet
-    PATCHWALLET_CLIENT_ID: process.env.PATCHWALLET_CLIENT_ID,
-    PATCHWALLET_CLIENT_SECRET: process.env.PATCHWALLET_CLIENT_SECRET,
-    PATCHWALLET_BASE_URL: process.env.PATCHWALLET_BASE_URL,
 
-    NEXT_PUBLIC_PATCHWALLET_KERNEL_NAME: process.env.NEXT_PUBLIC_PATCHWALLET_KERNEL_NAME,
 
     // Lit
     DOMAIN: process.env.DOMAIN,
