@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "es2020",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "checkJs": true,
     "skipLibCheck": true,
@@ -18,9 +22,18 @@
     "noUncheckedIndexedAccess": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@abis/*": ["./src/contracts/abi/*"]
-    }
+      "@/*": [
+        "./src/*"
+      ],
+      "@abis/*": [
+        "./src/contracts/abi/*"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     ".eslintrc.cjs",
@@ -30,7 +43,10 @@
     "**/*.cjs",
     "**/*.mjs",
     "sol2/tsconfig.json",
-    "next.config.js"
+    "next.config.js",
+    ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

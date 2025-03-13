@@ -17,12 +17,12 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-function enableBeforeUnload () {
+function enableBeforeUnload() {
   window.onbeforeunload = function (e) {
     return "Discard changes?";
   };
 }
-function disableBeforeUnload () {
+function disableBeforeUnload() {
   window.onbeforeunload = null;
 }
 
@@ -94,7 +94,7 @@ export const useCreateEtch = () => {
 
       setOperation(opId, {
         name: "Creation of " + data.length + " etch" + (data.length > 1 ? "es" : ""),
-        description: "tx: " + res.tx + " -- etchId: " + res.id,
+        description: "tx: " + res.tx + " -- etchId: " + res.ids,
         status: "Done",
         progress: 100,
         statusType: "success",
