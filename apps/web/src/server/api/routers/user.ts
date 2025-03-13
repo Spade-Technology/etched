@@ -1,6 +1,13 @@
 import { adminProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
 import { prisma } from "@/server/db";
-import { getClerkUserListWithCredits, userCreditsRemaining, updateUserCredits, UsersListInputSchema, type PaginatedResponseSchemaResult } from "@/server/etched-credit-management";
+import {
+  getClerkUserListWithCredits,
+  userCreditsRemaining,
+  UsersListInputSchema,
+  type PaginatedResponseSchemaResult,
+  addCreditsToUser,
+  getUserCreditHistory
+} from "@/server/etched-credit-management";
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -75,17 +82,21 @@ export const userRouter = createTRPCRouter({
       return true;
     }),
 
-  updateUserEtchedCredits: protectedProcedure
-    .input(z.object({ email_id: z.string(), credits_value: z.number().min(1).max(1000) }))
-    .mutation(async ({ input: { email_id, credits_value } }) => {
+  addCreditsToUser: adminProcedure
+    .input(z.object({ clerkId: z.string(), credits_to_add: z.number().min(1).max(1000) }))
+    .mutation(async ({ input: { clerkId, credits_to_add } }) => {
       try {
-        const res = await updateUserCredits(email_id, credits_value)
+        const res = await addCreditsToUser(clerkId, credits_to_add);
         if (!res?.success) {
-          throw new TRPCError({ code: "NOT_FOUND", message: res?.error || "Invalid attempt!" })
+          throw new TRPCError({ code: "NOT_FOUND", message: res?.error || "Invalid attempt!" });
         }
-        return res
+        return res;
       } catch (error) {
-        console.log(error)
+        console.error(error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Failed to add credits"
+        });
       }
     }),
 
@@ -102,9 +113,8 @@ export const userRouter = createTRPCRouter({
     .query(async ({ ctx: {
       session: { address },
     } }) => {
-      const availableCredits = await userCreditsRemaining(address as EVMAddressType)
-
-      return Number(availableCredits || 0);
+      const availableCredits = await userCreditsRemaining(address as EVMAddressType);
+      return availableCredits;
     }),
 
   getAllClerkUsersWithCredits: protectedProcedure
@@ -222,4 +232,11 @@ export const userRouter = createTRPCRouter({
 
     return { code, expiration };
   }),
+
+  getUserCreditHistory: protectedProcedure
+    .query(async ({ ctx: {
+      session: { address },
+    } }) => {
+      return await getUserCreditHistory(address as EVMAddressType);
+    }),
 });

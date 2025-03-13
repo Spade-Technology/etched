@@ -1,7 +1,7 @@
 import { camelCaseNetwork, contracts } from "@/contracts";
 import { lit } from "@/LitServerSide";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { deductCreditsFromUser, userHasSufficientCredits } from "@/server/etched-credit-management";
+import { useCreditsForEtch, userHasSufficientCredits, useBulkCreditsForEtch } from "@/server/etched-credit-management";
 import { publicClient, walletClient } from "@/server/web3";
 import { defaultAccessControlConditions, defaultAccessControlConditionsUsingReadableID } from "@/utils/accessControlConditions";
 import { EVMAddressType, teamPermissions } from "@/utils/common";
@@ -106,24 +106,35 @@ export const etchRouter = createTRPCRouter({
             hash: tx1,
           });
 
-          if (!transactionResult.logs[0]) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction failed" });
+          if (transactionResult.logs.length === 0) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction failed" });
 
-          const transferEvent = decodeEventLog({
-            abi: EtchABI,
-            eventName: "Transfer",
-            data: transactionResult.logs[0].data,
-            topics: transactionResult.logs[0].topics,
-          });
+          // Extract all etchIds from the transaction logs
+          // The Transfer event signature is keccak256("Transfer(address,address,uint256)")
+          const transferEventSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-          const etchId = (transferEvent.args as any).tokenId;
+          const etchIds = transactionResult.logs
+            .filter(log => log.topics[0] === transferEventSignature)
+            .map(log => {
+              const transferEvent = decodeEventLog({
+                abi: EtchABI,
+                eventName: "Transfer",
+                data: log.data,
+                topics: log.topics,
+              });
+              return (transferEvent.args as any).tokenId.toString();
+            });
 
           //NOTE: Finally deduct from credits . . .  Admins get pass
           if (!isAdmin) {
-            const tmpRemainingCredits = await deductCreditsFromUser(address as EVMAddressType)
+            await useBulkCreditsForEtch(
+              address as EVMAddressType,
+              tx1,
+              etchIds
+            );
           }
-          return { tx: tx1, id: etchId };
+          return { tx: tx1, ids: etchIds };
         } catch (e) {
-          return { tx: tx1, id: undefined };
+          return { tx: tx1, ids: [] };
         }
       }
     ),

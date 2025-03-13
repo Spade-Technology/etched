@@ -5,6 +5,7 @@ import { getServerSession, type DefaultSession, type NextAuthOptions } from "nex
 import CredentialsProvider from "next-auth/providers/credentials";
 import { SiweMessage } from "siwe";
 import { clerk_client } from "@/clerkClient";
+import { addCreditsToUser } from "./etched-credit-management";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -110,6 +111,7 @@ export function getAuthOptions(req: IncomingMessage): NextAuthOptions {
           // If user doesn't exist, create it
           if (!user) {
             user = await prisma.user.create({ data: { address: siwe.address, email: clerkUser?.primaryEmailAddressId, clerkId: credentials.userId, pkpId: credentials.pkpAddress } });
+            await addCreditsToUser(user.clerkId, 25)
           }
 
           // Return the user info
