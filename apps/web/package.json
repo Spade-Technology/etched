@@ -10,7 +10,13 @@
     "lint": "dotenv -e ../../.env -- next lint",
     "start": "dotenv -e ../../.env -- next start",
     "codegen": "dotenv -e ../../.env --  graphql-codegen",
-    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook"
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook",
+    "dev:generic": "next dev",
+    "dev:git-env": "../../detect-git-env.sh dev:generic",
+    "build:generic": "NODE_ENV=production -- next build",
+    "build:git-env": "../../detect-git-env.sh build:generic",
+    "db:push:generic": "prisma db push",
+    "db:push:git-env": "../../detect-git-env.sh db:push:generic"
   },
   "dependencies": {
     "@clerk/backend": "^1.24.1",

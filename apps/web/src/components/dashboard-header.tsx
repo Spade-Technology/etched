@@ -23,7 +23,7 @@ export const DashboardHeader = () => {
 
   const icons = [
     { Icon: Icons.userCircle, url: "/dashboard/profile", show: !!isSignedIn },
-    { Icon: Icons.bell, show: true },
+    { Icon: Icons.bell, show: false },
   ];
 
   return (

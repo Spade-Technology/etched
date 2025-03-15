@@ -19,7 +19,7 @@ import Link from "next/link";
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   isSignup?: boolean;
   factorTwo?: boolean;
-  SignInOrUpComponent: () => React.JSX.Element
+  SignInOrUpComponent: () => React.JSX.Element;
 }
 
 export default function AuthenticationPage({ isSignup }: { isSignup: boolean }) {
@@ -51,14 +51,18 @@ export default function AuthenticationPage({ isSignup }: { isSignup: boolean }) 
         <div className="mx-auto w-96">
           <Icons.brightLogo className="h-9 cursor-pointer" onClick={() => router.push("/")} />
           <div className="tracking-lighter my-5 text-base font-medium">The leading blockchain intellectual property platform</div>
-          <div className="flex h-10 w-32 cursor-pointer items-center justify-center border-2 border-white text-base font-semibold shadow">
+          <a
+            href="/"
+            className="flex h-10 w-32 cursor-pointer items-center justify-center border-2 border-white text-base font-semibold shadow"
+          >
             Learn more
-          </div>
+          </a>
         </div>
       </aside>
       <div
-        className={`mx-auto flex w-4/6 flex-col items-center justify-center gap-4 py-10 transition-opacity delay-500 duration-1000 ease-in-out ${showLogin ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
-          }`}
+        className={`mx-auto flex w-4/6 flex-col items-center justify-center gap-4 py-10 transition-opacity delay-500 duration-1000 ease-in-out ${
+          showLogin ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
+        }`}
       >
         <div className="w-full sm:w-[25rem]">
           {!(sessionId || !factorTwo) && (
@@ -86,7 +90,13 @@ export default function AuthenticationPage({ isSignup }: { isSignup: boolean }) 
               </Button>
             </div>
           ) : (
-            <UserAuthForm isSignup={isSignup} factorTwo={factorTwo} SignInOrUpComponent={() => isSignup ? <SignUp path="/auth/signup" signInUrl="/auth" /> : <SignIn path="/auth" signUpUrl="/auth/signup" />} />
+            <UserAuthForm
+              isSignup={isSignup}
+              factorTwo={factorTwo}
+              SignInOrUpComponent={() =>
+                isSignup ? <SignUp path="/auth/signup" signInUrl="/auth" /> : <SignIn path="/auth" signUpUrl="/auth/signup" />
+              }
+            />
           )}
           {!(sessionId || factorTwo) && (
             <div className="mx-auto mt-10 flex w-full items-center justify-center">
@@ -156,9 +166,10 @@ export function UserAuthForm({ className, isSignup, factorTwo, SignInOrUpCompone
             {threeDots}
           </span>
         </div>
-      ) : // if signUp=1, then it will be a sign up form
+      ) : (
+        // if signUp=1, then it will be a sign up form
         <SignInOrUpComponent />
-      }
+      )}
       {!sessionId && !isSignup && !factorTwo && (
         <>
           <div className="flex items-center justify-center">
