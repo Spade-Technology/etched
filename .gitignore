@@ -48,3 +48,7 @@ yarn-error.log*
 #graph items
 **/graph-docker/data
 **/web-docker/data
+
+
+# LOCAL DEV ITEMS
+postgres_data
