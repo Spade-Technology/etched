@@ -38,7 +38,7 @@ declare module "next-auth" {
 }
 
 
-export async function verifySiweMessage(
+export async function verifySiweMessage (
   credentials: Record<"message" | "signature" | "derivedVia" | "userId", string> | undefined,
   req: IncomingMessage
 ) {
@@ -71,10 +71,10 @@ export async function verifySiweMessage(
 }
 
 
-export function getAuthOptions(req: IncomingMessage): NextAuthOptions {
+export function getAuthOptions (req: IncomingMessage): NextAuthOptions {
   const providers = [
     CredentialsProvider({
-      async authorize(credentials) {
+      async authorize (credentials) {
         try {
           if (!credentials) return null;
 
@@ -109,7 +109,7 @@ export function getAuthOptions(req: IncomingMessage): NextAuthOptions {
 
           // If user doesn't exist, create it
           if (!user) {
-            user = await prisma.user.create({ data: { address: siwe.address, email: clerkUser?.primaryEmailAddressId, clerkId: credentials.userId, pkpId: credentials.pkpAddress } });
+            user = await prisma.user.create({ data: { address: siwe.address, email: clerkUser?.primaryEmailAddressId, clerkId: credentials.userId, pkpId: credentials.pkpAddress, etchedCreditsRemaining: 20 } });
           }
 
           // Return the user info
@@ -162,7 +162,7 @@ export function getAuthOptions(req: IncomingMessage): NextAuthOptions {
 
   return {
     callbacks: {
-      async session({ session, token }) {
+      async session ({ session, token }) {
         let user = await prisma.user.findUnique({
           where: { address: token.sub },
         });
