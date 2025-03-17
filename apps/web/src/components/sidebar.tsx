@@ -43,7 +43,7 @@ export const SideBar = () => {
   const path = router.asPath;
   const pages = [
     { url: "/dashboard", title: "Dashboard", Icon: Icons.dashboard },
-    { url: "/dashboard/manage", title: "Organisation", Icon: Icons.organisation },
+    { url: "/dashboard/manage", title: "Organisation", Icon: Icons.organisation, disabled: true },
     { url: "/dashboard/etch-library", title: "Etch Library", Icon: Icons.etchLibrary, disabled: true },
     { url: "/dashboard/marketplace", title: "Marketplace", Icon: Icons.marketplace, disabled: true },
     { url: "/dashboard/community", title: "Community", Icon: Icons.community, disabled: true },
@@ -65,7 +65,8 @@ export const SideBar = () => {
                   className={
                     index === activePageIndex ? activeClassName : sideBarElementCn + (disabled ? " cursor-context-menu" : "")
                   }
-                  href={disabled ? "#" : url}
+                  href={""}
+                  onClick={disabled ? (e) => e.preventDefault() : () => router.push(url)}
                 >
                   <Icon
                     color={index === activePageIndex ? "rgb(var(--primary))" : "rgb(var(--foreground), 0.5)"}

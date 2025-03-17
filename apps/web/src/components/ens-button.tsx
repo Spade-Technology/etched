@@ -112,9 +112,9 @@ export const EtchedENS = () => {
   ) : (
     <AlertDialog>
       <AlertDialogTrigger>
-        <div className="flex !w-[140px] items-center gap-2 rounded-md border-[1.5px] border-input px-4 py-2">
+        <div className="flex !w-[180px] items-center gap-2 rounded-md border-[1.5px] border-input px-4 py-2">
           <EtchedWalletIcon />
-          <span className="text-sm font-medium text-primary">Claim ENS</span>
+          <span className="text-sm font-medium text-primary">Claim Etched ID</span>
         </div>
       </AlertDialogTrigger>
       <AlertDialogContent>

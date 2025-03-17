@@ -55,7 +55,7 @@ class LitServerSide {
 
   }
 
-  async connect() {
+  async connect () {
     if (this.client && this.litContracts) return this.client;
 
     if (!this.connectingLock) {
@@ -88,13 +88,13 @@ class LitServerSide {
   }
 
 
-  async getMetadataFromIpfs(ipfsCid: string) {
+  async getMetadataFromIpfs (ipfsCid: string) {
     const ipfsData = await (await fetch(`${ipfsPlublicClientUrl}${ipfsCid}`)).json();
 
     return ipfsData.metadata;
   }
 
-  async mintPkp(userId: string) {
+  async mintPkp (userId: string) {
     if (!this.litContracts) return
     try {
       const pkpMintCost = await this.getPkpMintCost(this.litContracts);
@@ -128,14 +128,15 @@ class LitServerSide {
   };
 
 
-  async getPkpSessionSigs(
+  async getPkpSessionSigs (
     userId: string, token: string,
     mintedPkp: Pkp
   ) {
 
     if (!this.client || !this.ethersSigner) return
     try {
-
+      console.log('LIT ACTION CODE SON!!!!')
+      console.log(litActionCode)
       const sessionSignatures = await this.client.getPkpSessionSigs({
         pkpPublicKey: mintedPkp.publicKey,
         litActionCode: Buffer.from(litActionCode).toString("base64"),
@@ -162,7 +163,7 @@ class LitServerSide {
     }
   }
 
-  async pkpSignMessage(
+  async pkpSignMessage (
     litSessionSigs: any,
     pkpPublicKey: string,
     dataToSign: string
@@ -193,7 +194,7 @@ class LitServerSide {
     }
   };
 
-  async pkpSignRawMessage(
+  async pkpSignRawMessage (
     litSessionSigs: any,
     pkpPublicKey: string,
     dataToSign: string
@@ -218,7 +219,7 @@ class LitServerSide {
   };
 
 
-  async encryptToIpfs(props: ParameterType & { string?: string; file?: File | Blob; metadata: any }) {
+  async encryptToIpfs (props: ParameterType & { string?: string; file?: File | Blob; metadata: any }) {
     if (!this.client) throw new Error(`there's no litNodeClient`)
     if (props.string && props.file) throw new Error(`You can't encrypt a file and a string`);
     if (!props.string && !props.file) throw new Error(`File and String are both undefined`);
@@ -255,7 +256,7 @@ class LitServerSide {
     return res.IpfsHash;
   };
 
-  async decryptFromIpfs(props: decryptToIpfsProps) {
+  async decryptFromIpfs (props: decryptToIpfsProps) {
     if (!this.client) throw new Error("Lit not connected!!")
     try {
 
@@ -287,11 +288,11 @@ class LitServerSide {
 
   // ------------------ UTILS ------------------ i hate oop
 
-  async getPkpMintCost(litContracts: LitContracts) {
+  async getPkpMintCost (litContracts: LitContracts) {
     const pkpMintCost = await litContracts.pkpNftContract.read.mintCost();
     return pkpMintCost;
   };
-  getClerkAuthMethodInfo(userId: string) {
+  getClerkAuthMethodInfo (userId: string) {
     const authMethodInfo = {
       authMethodType: ethers.utils.keccak256(
         ethers.utils.toUtf8Bytes("Etched clerk auth method")
@@ -304,13 +305,13 @@ class LitServerSide {
     return authMethodInfo;
   };
 
-  async getLitActionCodeIpfsCid() {
+  async getLitActionCodeIpfsCid () {
     const litActionIpfsCid = await IpfsHash.of(litActionCode);
 
     return litActionIpfsCid;
   };
 
-  async getPkpInfoFromMintReceipt(
+  async getPkpInfoFromMintReceipt (
     txReceipt: ethers.ContractReceipt,
     litContractsClient: LitContracts
   ) {
@@ -333,7 +334,7 @@ class LitServerSide {
     };
   };
 
-  async getCapacityCredit() {
+  async getCapacityCredit () {
     if (!this.litContracts) return
     try {
 
@@ -352,7 +353,7 @@ class LitServerSide {
   };
 
 
-  async addUsersAsPayees(users: string[]) {
+  async addUsersAsPayees (users: string[]) {
     if (litNetwork !== "datil") return
     const headers = {
       "api-key": env.LIT_RELAYER_API_KEY,
