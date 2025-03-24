@@ -23,23 +23,23 @@ export const DashboardHeader = () => {
 
   const icons = [
     { Icon: Icons.userCircle, url: "/dashboard/profile", show: !!isSignedIn },
-    { Icon: Icons.bell, show: true },
+    { Icon: Icons.bell, show: false },
   ];
 
   return (
-    <div className="sticky top-0 z-10 flex h-16 w-full items-center gap-2 bg-background pl-6 shadow-4xl">
+    <div className="sticky top-0 z-10 flex h-16 w-full items-center justify-between gap-2 bg-background pl-6 shadow-4xl">
       {!!remainingCredits && remainingCredits > 0 ? (
         <CreateEtchButton />
       ) : (
         <p style={{ color: "red", fontWeight: "bold" }}>Please purchase more credits...</p>
       )}
       <RemainingCreditsDisplay />
-      <CommandMenu />
+      {/* <CommandMenu /> */}
 
       <div className="mx-6 flex h-full w-fit items-center gap-6 border-l pl-6">
         {/* Etched ENS */}
         <EtchedENS />
-        <TeamSelector horizontal={true} className="w-fit py-2" />
+        {/* <TeamSelector horizontal={true} className="w-fit py-2" /> */}
       </div>
 
       {/* Modals & More */}

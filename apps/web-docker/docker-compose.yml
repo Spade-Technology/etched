@@ -1,21 +1,12 @@
-version: "3.8"
-
 services:
   postgres:
-    image: postgres
+    image: postgres:17-alpine
+    restart: always
+    env_file:
+      - .env.docker
     ports:
-      - "5632:5432"
-    command: ["postgres", "-cshared_preload_libraries=pg_stat_statements"]
-    environment:
-      POSTGRES_USER: etched_user
-      POSTGRES_PASSWORD: etched_password
-      POSTGRES_DB: etched_db
-      PG_MAX_CONNECTIONS: 20
-      PG_CONNECTION_LIMIT: 10
-      # FIXME: remove this env. var. which we shouldn't need. Introduced by
-      # <https://github.com/graphprotocol/graph-node/pull/3511>, maybe as a
-      # workaround for https://github.com/docker/for-mac/issues/6270?
-      PGDATA: "/var/lib/postgresql/data"
-      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      - "7772:5432"
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - ./postgres_data:/var/lib/postgresql/data
+# volumes:
+#   postgres_data:

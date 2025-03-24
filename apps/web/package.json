@@ -10,7 +10,19 @@
     "lint": "dotenv -e ../../.env -- next lint",
     "start": "dotenv -e ../../.env -- next start",
     "codegen": "dotenv -e ../../.env --  graphql-codegen",
-    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook"
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook",
+    "VISUAL_BREAK": "######################################################################",
+    "dev:generic": "next dev",
+    "dev:git-env": "../../detect-git-env.sh dev:generic",
+    "build:generic": "NODE_ENV=production -- next build",
+    "build:git-env": "../../detect-git-env.sh build:generic",
+    "db:push:generic": "prisma db push",
+    "db:push:git-env": "../../detect-git-env.sh db:push:generic",
+    "docker:up": "docker compose -f ../web-docker/docker-compose.yml up -d postgres",
+    "docker:down": "docker compose -f ../web-docker/docker-compose.yml down -v postgres",
+    "prisma:prepare": "npx prisma generate && npx prisma migrate deploy",
+    "docker:dev": "pnpm run docker:up && npx wait-on tcp:localhost:7772 && pnpm run dev:git-env",
+    "docker:prisma:dev": "pnpm run docker:up && npx wait-on tcp:localhost:7772 && pnpm run db:push:git-env && pnpm run dev:git-env"
   },
   "dependencies": {
     "@clerk/backend": "^1.24.1",

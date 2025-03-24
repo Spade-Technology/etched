@@ -36,7 +36,6 @@ export const env = createEnv({
     INFURA_API_SECRET: z.string(),
     INFURA_KEY: z.string(),
 
-
     // Etched Node
     ETCHED_NODE_PRIVATE_KEY: z.string(),
 
@@ -45,13 +44,12 @@ export const env = createEnv({
     // Clerk
     CLERK_SECRET_KEY: z.string(),
 
-
     // Lit
     DOMAIN: z.string(),
     LIT_PRIVATE_KEY: z.string(),
     LIT_PAYER_SECRET_KEY: z.string(),
     LIT_RELAYER_API_KEY: z.string(),
-
+    LIT_ACTION_BASE_URL: z.string().optional(),
 
     // IPFS
     PINATA_API_KEY: z.string().min(1),
@@ -142,13 +140,12 @@ export const env = createEnv({
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
 
-
-
     // Lit
     DOMAIN: process.env.DOMAIN,
     LIT_PAYER_SECRET_KEY: process.env.LIT_PAYER_SECRET_KEY,
     LIT_RELAYER_API_KEY: process.env.LIT_RELAYER_API_KEY,
     LIT_PRIVATE_KEY: process.env.LIT_PRIVATE_KEY,
+    LIT_ACTION_BASE_URL: process.env.LIT_ACTION_BASE_URL,
 
     // IPFS
     NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY: process.env.NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY,

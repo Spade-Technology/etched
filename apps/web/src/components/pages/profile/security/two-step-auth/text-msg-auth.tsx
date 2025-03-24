@@ -59,7 +59,7 @@ export default function TextMsgAuth({ disabled }: { disabled: boolean }) {
             </section>
           </TooltipTrigger>
           {disabled && (
-            <TooltipContent side="top">Please add a phone number to enable text message authentication.</TooltipContent>
+            <TooltipContent side="top" className="text-white">Please add a phone number to enable text message authentication.</TooltipContent>
           )}
         </Tooltip>
       </TooltipProvider>
