@@ -11,7 +11,7 @@ import { api } from "@/utils/api";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import ForwardArrow from "public/icons/forward-arrow.svg";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const [showWaitlist, setShowWaitlist] = useState(false);
@@ -53,6 +53,10 @@ export default function Home() {
 
     if (typeof open === "string") setEmail(open);
   };
+
+  useEffect(() => {
+    router.push("/auth");
+  }, [])
 
   return (
     <div className="w-full overflow-hidden font-campton">
