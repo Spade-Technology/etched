@@ -135,8 +135,6 @@ class LitServerSide {
 
     if (!this.client || !this.ethersSigner) return
     try {
-      console.log('LIT ACTION CODE SON!!!!')
-      console.log(litActionCode)
       const sessionSignatures = await this.client.getPkpSessionSigs({
         pkpPublicKey: mintedPkp.publicKey,
         litActionCode: Buffer.from(litActionCode).toString("base64"),
