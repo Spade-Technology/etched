@@ -21,12 +21,6 @@ export const litRouter = createTRPCRouter({
     .mutation(async ({ input: { userId, token, message, pkp } }) => {
       try {
         await lit.connect()
-        console.log('*********************************************************************************************')
-        console.log('**************************************signMessage*****************************************')
-        console.log('userId', userId)
-        console.log('token', token)
-        console.log('message', message)
-        console.log('pkp', pkp)
 
         const sessionsSigs = await lit.getPkpSessionSigs(userId, token, pkp)
         if (!sessionsSigs) throw new TRPCError({ code: "BAD_REQUEST", message: "Unable To GET sessionsSigs!!" })
@@ -145,15 +139,10 @@ export const litRouter = createTRPCRouter({
     )
     .mutation(async ({ input: { userId }, ctx: { prisma } }) => {
       await lit.connect()
-      console.log('HERE 1')
       const pkp = await lit.mintPkp(userId)
-      console.log('HERE 2')
       if (!pkp) throw new TRPCError({ code: "BAD_REQUEST", message: "Unable To Mint PKP!!" })
-      console.log('HERE 3')
       await lit.addUsersAsPayees([pkp.ethAddress])
-      console.log('HERE 4')
       await prisma.pkp.create({ data: { ...pkp, clerkId: userId } })
-      console.log('HERE 5')
 
       return {
         eoa: pkp.ethAddress,
