@@ -54,9 +54,7 @@ export default function Home() {
     if (typeof open === "string") setEmail(open);
   };
 
-  useEffect(() => {
-    router.push("/auth");
-  }, [])
+
 
   return (
     <div className="w-full overflow-hidden font-campton">
