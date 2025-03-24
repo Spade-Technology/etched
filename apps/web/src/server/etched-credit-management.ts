@@ -4,6 +4,7 @@ import { prisma } from "@/server/db";
 import { z } from "zod";
 import { EVMAddressType } from "@/utils/common";
 import { clerk_client } from "@/clerkClient";
+import { CreditStatus } from "@prisma/client";
 
 export const UsersListInputSchema = z.object({
   limit: z.number().min(1).max(500).default(50),
@@ -34,11 +35,12 @@ const PaginatedResponseSchema = z.object({
 });
 export type PaginatedResponseSchemaResult = z.infer<typeof PaginatedResponseSchema>;
 
-
-
 const BatchSizeSchema = z.number().min(1).max(500).default(100);
 type BatchSize = z.infer<typeof BatchSizeSchema>;
 
+/**
+ * Get Clerk users with their available credit count
+ */
 export const getClerkUserListWithCredits = async (params: UsersListInputSchemaParams): Promise<PaginatedResponseSchemaResult> => {
   const { limit = 10, offset = 0, orderBy } = params;
 
@@ -56,10 +58,10 @@ export const getClerkUserListWithCredits = async (params: UsersListInputSchemaPa
     clerk_client.users.getCount(queryParams),
   ]);
 
-  //Append local credit-related values
+  // Append local credit-related values
   const enrichedUsers = await enrichUsersWithCredits(users.data);
 
-  //Complete navigation
+  // Complete navigation
   const hasMore = offset + limit < total;
   const previous = offset > 0 ? Math.max(0, offset - limit) : null;
   const next = hasMore ? offset + limit : null;
@@ -79,13 +81,15 @@ export const getClerkUserListWithCredits = async (params: UsersListInputSchemaPa
   };
 }
 
-
+/**
+ * Process a batch of users to add credit information
+ */
 const processUserBatch = async (
   users: any[],
   userIds: string[]
 ): Promise<any[]> => {
-  //NOTE: `email` was a poor field name choice for what is mapped `primaryEmailId` in Clerk
-  const creditData = await prisma.user.findMany({
+  // Get user data from Prisma
+  const userData = await prisma.user.findMany({
     where: {
       email: {
         in: userIds
@@ -94,19 +98,28 @@ const processUserBatch = async (
     select: {
       email: true,
       address: true,
-      etchedCreditsRemaining: true
+      _count: {
+        select: {
+          credits: {
+            where: {
+              status: CreditStatus.AVAILABLE
+            }
+          }
+        }
+      }
     }
   });
 
+  // Create a map of email to available credits count
   const creditMap = new Map(
-    creditData.map(user => [user.email, user.etchedCreditsRemaining])
+    userData.map(user => [user.email, user._count.credits])
   );
 
+  // Enrich users with credit information
   return users.map(user => ({
     ...user,
     etchedCreditsRemaining: creditMap.get(user.primaryEmailAddressId) ?? 0,
     primaryMatchedEmailAddress: user?.emailAddresses?.find((entry: any) => entry.id == user.primaryEmailAddressId)?.emailAddress
-    // primaryMatchedEmailAddress: user?.emailAddresses?.find((entry: any) => entry.id.toLowerCase() == user.primaryEmailAddressId.toLowerCase())
   }));
 };
 
@@ -122,7 +135,6 @@ export const enrichUsersWithCredits = async (
 
   for (let i = 0; i < clerkUsers.length; i += validatedBatchSize) {
     const userBatch = clerkUsers.slice(i, i + validatedBatchSize);
-    // const userIds = userBatch.map(user => user.id);
     const userIds = userBatch.map(user => user.primaryEmailAddressId);
 
     const enrichedBatch = await processUserBatch(userBatch, userIds);
@@ -132,87 +144,195 @@ export const enrichUsersWithCredits = async (
   return enrichedUsers;
 };
 
-
 /**
- * Update user credits in Prisma DB
- * NOTE: Strictly for UI.  Do not call in `bulkMintEtch`
+ * Add credits to a user
  */
-export const updateUserCredits = async (
+export const addCreditsToUser = async (
   userId: string,
-  creditsUpdate: number
-): Promise<{ success: boolean; updatedCredits: number | null; error?: string }> => {
-  //NOTE: userId is actually email in the DB, but it was a bad choice.
+  creditsToAdd: number
+): Promise<{ success: boolean; totalCredits: number; error?: string }> => {
   try {
-    const updateResult = await prisma.user.updateMany({
+    // Find the user by email using findFirst instead of findUnique
+    const user = await prisma.user.findFirst({
       where: {
-        email: userId
-      },
-      data: {
-        etchedCreditsRemaining: {
-          set: creditsUpdate
+        clerkId: userId
+      }
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        totalCredits: 0,
+        error: `User with clerkId ${userId} not found`
+      };
+    }
+
+    // Create the specified number of credits
+    const creditPromises = Array(creditsToAdd).fill(null).map(() =>
+      prisma.credit.create({
+        data: {
+          status: CreditStatus.AVAILABLE,
+          userAddress: user.address
         }
+      })
+    );
+
+    await Promise.all(creditPromises);
+
+    // Count available credits
+    const availableCredits = await prisma.credit.count({
+      where: {
+        userAddress: user.address,
+        status: CreditStatus.AVAILABLE
       }
     });
 
     return {
-      success: updateResult.count > 0,
-      updatedCredits: updateResult.count > 0 ? creditsUpdate : null,
-      error: updateResult.count === 0 ? `User with ID ${userId} not found` : undefined
+      success: true,
+      totalCredits: availableCredits
     };
-
   } catch (error) {
-    console.error('Error updating user credits:', error);
+    console.error('Error adding credits to user:', error);
     return {
       success: false,
-      updatedCredits: null,
+      totalCredits: 0,
       error: error instanceof Error ? error.message : 'Unknown error occurred'
     };
   }
 };
 
-
-
-//Primarily for etching (i.e. not interacting with Admin UI)
-export const userCreditsRemaining = async (address: EVMAddressType) => {
-  const user = await prisma.user.findUnique({
-    where: { address: address },
+/**
+ * Get the number of available credits for a user
+ */
+export const userCreditsRemaining = async (address: EVMAddressType): Promise<number> => {
+  const availableCredits = await prisma.credit.count({
+    where: {
+      userAddress: address,
+      status: CreditStatus.AVAILABLE
+    }
   });
 
-  return Number(user?.etchedCreditsRemaining || 0)
-}
+  return availableCredits;
+};
 
-export const userHasSufficientCredits = async (address: EVMAddressType, requiredCredits: number = 1, adminGetsPass: boolean = true) => {
-
+/**
+ * Check if a user has sufficient credits
+ */
+export const userHasSufficientCredits = async (
+  address: EVMAddressType,
+  requiredCredits: number = 1,
+  adminGetsPass: boolean = true
+): Promise<boolean> => {
+  // Check if user is an admin
   if (adminGetsPass) {
     const user = await prisma.user.findUnique({
       where: { address: address },
     });
-    if (user?.isAdministrator == true) {
-      console.log('Roll out the red carpet for the admin!!!') // I was removing console.logs but this made laugh so hard that i changed my mind 
-      return true
+
+    if (user?.isAdministrator === true) {
+      console.log('Admin privileges applied - bypassing credit check');
+      return true;
     }
   }
 
-  //otherwise keep going
+  // Check available credits
   const availableCredits = await userCreditsRemaining(address);
   return availableCredits >= requiredCredits;
-}
+};
 
-export const deductCreditsFromUser = async (address: EVMAddressType, creditsToDeduct: number = 1) => {
+
+/**
+ * Use multiple credits for bulk etch operations
+ */
+export const useBulkCreditsForEtch = async (
+  address: EVMAddressType,
+  txHash: string,
+  etchIds: string[]
+): Promise<number> => {
   try {
-    const availableCredits = await userCreditsRemaining(address)
+    // Find available credits matching the number of etchIds
+    const availableCredits = await prisma.credit.findMany({
+      where: {
+        userAddress: address,
+        status: CreditStatus.AVAILABLE
+      },
+      take: etchIds.length
+    });
 
-    if (availableCredits > 0) {
-      creditsToDeduct = Math.max(0, Math.min(creditsToDeduct, availableCredits))
-      const updatedUser = await prisma.user.update({
-        where: { address },
-        data: { etchedCreditsRemaining: { decrement: creditsToDeduct } }
-      });
-      return updatedUser.etchedCreditsRemaining;
+    if (availableCredits.length < etchIds.length) {
+      throw new Error('Insufficient credits available for bulk operation');
     }
-    return availableCredits
+
+    // Update all credits in parallel
+    await Promise.all(
+      availableCredits.map((credit, index) => {
+        return prisma.credit.update({
+          where: { id: credit.id },
+          data: {
+            status: CreditStatus.USED,
+            txHash,
+            etchId: etchIds[index],
+            updatedAt: new Date()
+          }
+        });
+      })
+    );
+
+    // Return remaining credits
+    return await userCreditsRemaining(address);
   } catch (error) {
-    console.error('Error deducting credits:', error);
-    throw new Error('Failed to deduct credits');
+    console.error('Error using bulk credits:', error);
+    throw new Error('Failed to use bulk credits');
   }
-}
+};
+
+export const useCreditsForEtch = async (
+  address: EVMAddressType,
+  txHash: string,
+  etchId: string
+): Promise<number> => {
+  try {
+    // Find one available credit
+    const availableCredit = await prisma.credit.findFirst({
+      where: {
+        userAddress: address,
+        status: CreditStatus.AVAILABLE
+      }
+    });
+
+    if (!availableCredit) {
+      return 0;
+    }
+
+    // Mark the credit as used
+    await prisma.credit.update({
+      where: { id: availableCredit.id },
+      data: {
+        status: CreditStatus.USED,
+        txHash,
+        etchId,
+        updatedAt: new Date()
+      }
+    });
+
+    // Return remaining credits
+    return await userCreditsRemaining(address);
+  } catch (error) {
+    console.error('Error using credits:', error);
+    throw new Error('Failed to use credits');
+  }
+};
+
+/**
+ * Get credit usage history for a user
+ */
+export const getUserCreditHistory = async (address: EVMAddressType) => {
+  return prisma.credit.findMany({
+    where: {
+      userAddress: address
+    },
+    orderBy: {
+      updatedAt: 'desc'
+    }
+  });
+};

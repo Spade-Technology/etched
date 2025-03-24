@@ -21,6 +21,7 @@ import dynamic from "next/dynamic";
 
 import { useAuth } from "@clerk/nextjs";
 import { api } from "@/utils/api";
+import { lit } from "@/LitClientSide";
 
 const EtchSection = ({ etch, isLoading }: { etch: Etch; isLoading: boolean }) => {
   const { userId: _userId, getToken } = useAuth();
@@ -40,16 +41,23 @@ const EtchSection = ({ etch, isLoading }: { etch: Etch; isLoading: boolean }) =>
     args: [owner, etch?.tokenId],
   });
 
-  const { mutateAsync: decryptFromIpfs } = api.lit.decryptFromIpfs.useMutation();
+  const { mutateAsync: getSessionSigs } = api.lit.getSessionSigs.useMutation();
 
+  const { mutateAsync: getPkp } = api.lit.getPkp.useMutation();
 
   const decrypt = async () => {
     try {
       const token = await getToken()
       if (!etch?.ipfsCid || !userId || !token) return;
 
+      const pkp = await getPkp({
+        userId: userId
+      });
 
-      const decrypted = await decryptFromIpfs({ token, userId, ipfsCid: etch.ipfsCid }).catch((e) => alert(e.message));
+      if (!pkp) return;
+      const sessionSigs = await getSessionSigs({ token, userId, pkp: pkp.pkp })
+      const decrypted = await lit.decryptFromIpfs({ ipfsCid: etch.ipfsCid, sessionSigs })
+
 
 
       if (!decrypted?.data) return;

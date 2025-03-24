@@ -25,8 +25,7 @@ model User {
     userActivationCodes userActivationCode[]
     isAdministrator     Boolean              @default(false)
 
-    capacityCredits        capacityCredit[]
-    etchedCreditsRemaining Int?             @default(0)
+    credits Credit[]
 
     pkp Pkp? @relation(fields: [pkpId], references: [ethAddress])
 
@@ -61,15 +60,21 @@ model userActivationCode {
     userAddress String?
 }
 
-model capacityCredit {
-    id String @id @default(uuid())
-
-    capacityTokenId           String
-    creditAmountPerKilosecond Int
-    expiration                DateTime
-
+model Credit {
+    id        String   @id @default(uuid())
     createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
-    receiver    User?   @relation(fields: [userAddress], references: [address])
-    userAddress String?
+    status CreditStatus @default(AVAILABLE)
+
+    txHash String?
+    etchId String?
+
+    user        User   @relation(fields: [userAddress], references: [address])
+    userAddress String
+}
+
+enum CreditStatus {
+    AVAILABLE
+    USED
 }

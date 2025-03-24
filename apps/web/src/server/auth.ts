@@ -5,6 +5,7 @@ import { getServerSession, type DefaultSession, type NextAuthOptions } from "nex
 import CredentialsProvider from "next-auth/providers/credentials";
 import { SiweMessage } from "siwe";
 import { clerk_client } from "@/clerkClient";
+import { addCreditsToUser } from "./etched-credit-management";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -38,7 +39,7 @@ declare module "next-auth" {
 }
 
 
-export async function verifySiweMessage (
+export async function verifySiweMessage(
   credentials: Record<"message" | "signature" | "derivedVia" | "userId", string> | undefined,
   req: IncomingMessage
 ) {
@@ -71,10 +72,10 @@ export async function verifySiweMessage (
 }
 
 
-export function getAuthOptions (req: IncomingMessage): NextAuthOptions {
+export function getAuthOptions(req: IncomingMessage): NextAuthOptions {
   const providers = [
     CredentialsProvider({
-      async authorize (credentials) {
+      async authorize(credentials) {
         try {
           if (!credentials) return null;
 
@@ -109,7 +110,8 @@ export function getAuthOptions (req: IncomingMessage): NextAuthOptions {
 
           // If user doesn't exist, create it
           if (!user) {
-            user = await prisma.user.create({ data: { address: siwe.address, email: clerkUser?.primaryEmailAddressId, clerkId: credentials.userId, pkpId: credentials.pkpAddress, etchedCreditsRemaining: 20 } });
+            user = await prisma.user.create({ data: { address: siwe.address, email: clerkUser?.primaryEmailAddressId, clerkId: credentials.userId, pkpId: credentials.pkpAddress } });
+            await addCreditsToUser(user.clerkId, 25)
           }
 
           // Return the user info
@@ -162,7 +164,7 @@ export function getAuthOptions (req: IncomingMessage): NextAuthOptions {
 
   return {
     callbacks: {
-      async session ({ session, token }) {
+      async session({ session, token }) {
         let user = await prisma.user.findUnique({
           where: { address: token.sub },
         });

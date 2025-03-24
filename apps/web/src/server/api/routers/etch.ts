@@ -1,7 +1,7 @@
 import { camelCaseNetwork, contracts } from "@/contracts";
 import { lit } from "@/LitServerSide";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { deductCreditsFromUser, userHasSufficientCredits } from "@/server/etched-credit-management";
+import { useCreditsForEtch, userHasSufficientCredits, useBulkCreditsForEtch } from "@/server/etched-credit-management";
 import { publicClient, walletClient } from "@/server/web3";
 import { defaultAccessControlConditions, defaultAccessControlConditionsUsingReadableID } from "@/utils/accessControlConditions";
 import { EVMAddressType, teamPermissions } from "@/utils/common";
@@ -17,15 +17,8 @@ export const etchRouter = createTRPCRouter({
   bulkMintEtch: protectedProcedure
     .input(
       z.object({
-        files: z.array(
-          z.object({
-            name: z.string(),
-            description: z.string(),
-            url: z.string(),
-            type: z.string(),
-          })
-        ),
-        team: z.bigint().optional(),
+        functionName: z.string(),
+        args: z.array(z.any()),
 
         blockchainMessage: z.string(),
         authSig: z.any(),
@@ -34,15 +27,14 @@ export const etchRouter = createTRPCRouter({
     )
     .mutation(
       async ({
-        input: { files, authSig, team, blockchainMessage, blockchainSignature },
+        input: { functionName, args, authSig, blockchainMessage, blockchainSignature },
         ctx: {
           session: { address, isAdmin },
         },
       }) => {
         // uint256(keccak256(_msgSender())) + (random uint 48)
 
-        let ipfsCids: string[] = [];
-        let etchUIDs: string[] = [];
+
         let callDatas: string[] = [];
 
         //SECURITY:  Make sure user has enough credits to continue . . . Admins get a pass!
@@ -51,40 +43,15 @@ export const etchRouter = createTRPCRouter({
         }
 
         await lit.connect()
-        await Promise.all(
-          files.map(async ({ url, name, type }) => {
-            const etchUID = BigInt(keccak256(encodePacked(["address"], [address as Address]))) + random(48);
-            etchUIDs.push(etchUID);
+        args.forEach(arg => {
+          const calldata = encodeFunctionData({
+            abi: EtchABI,
+            functionName: functionName,
+            args: arg,
+          });
 
-            const file = await fetch(url).then((res) => res.blob());
-
-            const ipfsCid = await lit.encryptToIpfs({
-              authSig,
-              sessionSigs: {} as any,
-              file,
-              chain: camelCaseNetwork,
-              evmContractConditions: defaultAccessControlConditions({ etchUID: etchUID.toString() }),
-              metadata: { type, etchUID: etchUID.toString() },
-            }).catch((err) => {
-              console.error(err);
-              throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to upload to IPFS" });
-            });
-
-
-            ipfsCids.push(ipfsCid);
-
-            const functionName = team ? "safeMintForTeam" : "safeMint";
-            const args = team ? [etchUID, team, name, ipfsCid] : [etchUID, address, name, ipfsCid];
-
-            const calldata = encodeFunctionData({
-              abi: EtchABI,
-              functionName: functionName,
-              args: args,
-            });
-
-            callDatas.push(calldata);
-          })
-        );
+          callDatas.push(calldata);
+        });
 
         const tx1 = await walletClient.writeContract({
           address: contracts.Etch,
@@ -106,24 +73,35 @@ export const etchRouter = createTRPCRouter({
             hash: tx1,
           });
 
-          if (!transactionResult.logs[0]) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction failed" });
+          if (transactionResult.logs.length === 0) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction failed" });
 
-          const transferEvent = decodeEventLog({
-            abi: EtchABI,
-            eventName: "Transfer",
-            data: transactionResult.logs[0].data,
-            topics: transactionResult.logs[0].topics,
-          });
+          // Extract all etchIds from the transaction logs
+          // The Transfer event signature is keccak256("Transfer(address,address,uint256)")
+          const transferEventSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-          const etchId = (transferEvent.args as any).tokenId;
+          const etchIds = transactionResult.logs
+            .filter(log => log.topics[0] === transferEventSignature)
+            .map(log => {
+              const transferEvent = decodeEventLog({
+                abi: EtchABI,
+                eventName: "Transfer",
+                data: log.data,
+                topics: log.topics,
+              });
+              return (transferEvent.args as any).tokenId.toString();
+            });
 
           //NOTE: Finally deduct from credits . . .  Admins get pass
           if (!isAdmin) {
-            const tmpRemainingCredits = await deductCreditsFromUser(address as EVMAddressType)
+            await useBulkCreditsForEtch(
+              address as EVMAddressType,
+              tx1,
+              etchIds
+            );
           }
-          return { tx: tx1, id: etchId };
+          return { tx: tx1, ids: etchIds };
         } catch (e) {
-          return { tx: tx1, id: undefined };
+          return { tx: tx1, ids: [] };
         }
       }
     ),
