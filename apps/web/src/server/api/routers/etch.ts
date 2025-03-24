@@ -17,15 +17,8 @@ export const etchRouter = createTRPCRouter({
   bulkMintEtch: protectedProcedure
     .input(
       z.object({
-        files: z.array(
-          z.object({
-            name: z.string(),
-            description: z.string(),
-            url: z.string(),
-            type: z.string(),
-          })
-        ),
-        team: z.bigint().optional(),
+        functionName: z.string(),
+        args: z.array(z.any()),
 
         blockchainMessage: z.string(),
         authSig: z.any(),
@@ -34,15 +27,14 @@ export const etchRouter = createTRPCRouter({
     )
     .mutation(
       async ({
-        input: { files, authSig, team, blockchainMessage, blockchainSignature },
+        input: { functionName, args, authSig, blockchainMessage, blockchainSignature },
         ctx: {
           session: { address, isAdmin },
         },
       }) => {
         // uint256(keccak256(_msgSender())) + (random uint 48)
 
-        let ipfsCids: string[] = [];
-        let etchUIDs: string[] = [];
+
         let callDatas: string[] = [];
 
         //SECURITY:  Make sure user has enough credits to continue . . . Admins get a pass!
@@ -51,40 +43,15 @@ export const etchRouter = createTRPCRouter({
         }
 
         await lit.connect()
-        await Promise.all(
-          files.map(async ({ url, name, type }) => {
-            const etchUID = BigInt(keccak256(encodePacked(["address"], [address as Address]))) + random(48);
-            etchUIDs.push(etchUID);
+        args.forEach(arg => {
+          const calldata = encodeFunctionData({
+            abi: EtchABI,
+            functionName: functionName,
+            args: arg,
+          });
 
-            const file = await fetch(url).then((res) => res.blob());
-
-            const ipfsCid = await lit.encryptToIpfs({
-              authSig,
-              sessionSigs: {} as any,
-              file,
-              chain: camelCaseNetwork,
-              evmContractConditions: defaultAccessControlConditions({ etchUID: etchUID.toString() }),
-              metadata: { type, etchUID: etchUID.toString() },
-            }).catch((err) => {
-              console.error(err);
-              throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to upload to IPFS" });
-            });
-
-
-            ipfsCids.push(ipfsCid);
-
-            const functionName = team ? "safeMintForTeam" : "safeMint";
-            const args = team ? [etchUID, team, name, ipfsCid] : [etchUID, address, name, ipfsCid];
-
-            const calldata = encodeFunctionData({
-              abi: EtchABI,
-              functionName: functionName,
-              args: args,
-            });
-
-            callDatas.push(calldata);
-          })
-        );
+          callDatas.push(calldata);
+        });
 
         const tx1 = await walletClient.writeContract({
           address: contracts.Etch,

@@ -151,7 +151,7 @@ class LitServerSide {
           },
 
         ],
-        expiration: new Date(Date.now() + 1000 * 60 * 10).toISOString(), // 10 minutes
+        expiration: new Date(Date.now() + 1000 * 60 * 2).toISOString(), // 2 minutes
         chain: "ethereum"
       });
 

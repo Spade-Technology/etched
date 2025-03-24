@@ -56,7 +56,6 @@ export const env = createEnv({
     // IPFS
     PINATA_API_KEY: z.string().min(1),
     PINATA_API_SECRET: z.string().min(1),
-    PINATA_API_JWT: z.string().min(1),
 
     // Add these to the server schema
     STRIPE_SECRET_KEY: z.string().min(1),
@@ -88,6 +87,7 @@ export const env = createEnv({
 
     // IPFS
     NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY: z.string().url(),
+    NEXT_PUBLIC_PINATA_API_JWT: z.string().min(1),
 
     // App URL
     NEXT_PUBLIC_APP_URL: z.string().url(),
@@ -154,7 +154,7 @@ export const env = createEnv({
     NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY: process.env.NEXT_PUBLIC_IPFS_PUBLIC_GATEWAY,
     PINATA_API_KEY: process.env.PINATA_API_KEY,
     PINATA_API_SECRET: process.env.PINATA_API_SECRET,
-    PINATA_API_JWT: process.env.PINATA_API_JWT,
+    NEXT_PUBLIC_PINATA_API_JWT: process.env.NEXT_PUBLIC_PINATA_API_JWT,
 
     // App URL
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

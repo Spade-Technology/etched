@@ -99,22 +99,37 @@ const RemainingCreditsDisplay = () => {
       >
         Credits: {remainingCredits}
       </Badge>
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-9 gap-1"
-        disabled={isLoading}
-        onClick={() => handleBuyCredits('price_100_credits')}>
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <>
-            <Plus className="h-4 w-4" />
-            <CreditCard className="h-4 w-4" />
-            <span>Buy Credits</span>
-          </>
-        )}
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 gap-1"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                <CreditCard className="h-4 w-4" />
+                <span>Buy Credits</span>
+              </>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem onClick={() => handleBuyCredits('price_100_credits')}>
+            100 Credits
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleBuyCredits('price_50_credits')}>
+            50 Credits
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleBuyCredits('price_10_credits')}>
+            10 Credits
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
     </div >
   );
