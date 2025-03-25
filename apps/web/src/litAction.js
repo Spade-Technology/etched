@@ -1,10 +1,8 @@
 // @ts-nocheck
 
 const _litActionCode = async () => {
-  const ETCHED_AUTH_METHOD_TYPE = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("Etched clerk auth method")
-  );
-  const URL = "https://etched-env-tmp-new-auth-new-me-etchedit.vercel.app/api/action"
+  const ETCHED_AUTH_METHOD_TYPE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Etched clerk auth method"));
+  const URL = "https://etched-env-tmp-new-auth-new-me-etchedit.vercel.app/api/action";
   try {
     // Verify the token and user
     const verifyResponse = await fetch(URL, {
@@ -42,9 +40,7 @@ const _litActionCode = async () => {
     }
 
     // Checking if usersAuthMethodId is a permitted Auth Method for pkpTokenId
-    const usersAuthMethodId = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes(`etched:clerk:${userId}`)
-    );
+    const usersAuthMethodId = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`etched:clerk:${userId}`));
 
     const isPermitted = await Lit.Actions.isPermittedAuthMethod({
       tokenId: pkpTokenId,
