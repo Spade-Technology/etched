@@ -114,7 +114,8 @@ const EtchSection = ({ etch, isLoading }: { etch: Etch; isLoading: boolean }) =>
               alt="Etch image"
               // layout="fill" // required
               // objectFit="contain" // change to suit your needs
-              className="rounded-2xl w-full h-full object-contain"
+              loading="lazy"
+              className="h-full w-full rounded-2xl object-contain"
               onError={(event) => (event.currentTarget.style.display = "none")}
             />
             <EnterFullScreenIcon className="absolute right-5 top-5 h-6 w-6 cursor-pointer" onClick={toggleFullScreen} />
